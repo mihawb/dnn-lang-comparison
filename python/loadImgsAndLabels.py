@@ -12,7 +12,7 @@ def loadloadImgsAndLabels(imgs_path, labels_path) -> tuple[np.ndarray, np.ndarra
 
 	imgs = np.frombuffer(i_hand.read(), np.uint8, offset=8)
 	imgs = (255 - imgs) / 255
-	imgs = imgs.reshape(n_imgs, 28 * 28).T
+	imgs = imgs.reshape(n_imgs, 28 * 28)
 
 	labels = np.frombuffer(l_hand.read(), np.uint8, offset=4)
 
