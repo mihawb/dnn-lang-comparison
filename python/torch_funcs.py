@@ -116,6 +116,7 @@ def get_cifar10_loaders(batch_size, test_batch_size=None):
 	if not test_batch_size: test_batch_size = batch_size * 2
 
 	transform = torchvision.transforms.Compose([
+		torchvision.transforms.Resize(224),
 		torchvision.transforms.ToTensor(),
 		torchvision.transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
 	])
