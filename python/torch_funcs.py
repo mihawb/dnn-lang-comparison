@@ -131,6 +131,7 @@ def get_cifar10_loaders(batch_size, test_batch_size=None):
 
 
 class FullyConnectedNet(nn.Module):
+	
 	def __init__(self, layers=[784, 800, 10]):
 		super(FullyConnectedNet, self).__init__()
 		self.layers = nn.ModuleList([nn.Linear(a, b, dtype=torch.float64) for a, b in zip(layers[:-1], layers[1:])])
@@ -141,5 +142,5 @@ class FullyConnectedNet(nn.Module):
 			x = F.relu(layer(x))
 		x = self.layers[-1](x)
 		return F.log_softmax(x, dim=1)
-		# since log_softmax is returned, loss function has to be nll
-		# in order to achieve cross entropy in the end 
+		# PyTorch best practice is to use LogSoftmax activation on output layer combined with NLL as loss function
+		# or to return logits from FF and apply CrossEntropy loss function
