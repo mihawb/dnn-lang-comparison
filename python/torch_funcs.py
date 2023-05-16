@@ -9,7 +9,7 @@ from torch.utils.data import TensorDataset, DataLoader
 import torchvision
 
 
-def fit(model, device, loader, loss_func, epoch, lr=0.01, optimizer=None, log_interval=100, silent=False):
+def fit(model, device, loader, loss_func, epoch, optimizer, log_interval=100, silent=False):
 	'''
 	Fit model's parameters to train data.
 	'''
@@ -21,22 +21,15 @@ def fit(model, device, loader, loss_func, epoch, lr=0.01, optimizer=None, log_in
 		xb, yb = xb.to(device), yb.to(device)
 
 		# removing aggregated gradients
-		if optimizer: 
-			optimizer.zero_grad()
-		else:
-			model.zero_grad()		
+		optimizer.zero_grad()
 
-		# backporpagation
+		# feed forward
 		pred = model(xb)
 		loss = loss_func(pred, yb)
-		loss.backward()
 
-		# applying gradients 
-		if optimizer: 
-			optimizer.step()
-		else:
-			for param in model.parameters():		
-				param.data -= param.grad * lr
+		# backprop and applying gradients 
+		loss.backward()
+		optimizer.step()
 
 		# telemetry
 		running_loss += loss.item()
@@ -80,6 +73,47 @@ def test(model, device, loader, loss_func, silent=False):
 	return correct_pred / len(loader.dataset)
 
 
+def inception_fit(model, device, loader, loss_func, epoch, optimizer, log_interval=100, silent=False):
+	'''
+	Fit Inception parameters to train data (with auxiliary classifiers).
+	'''
+	model.train()
+	logs = []
+	running_loss = 0.0
+
+	for batch_idx, (xb, yb) in enumerate(loader):
+		xb, yb = xb.to(device), yb.to(device)
+
+		# removing aggregated gradients
+		optimizer.zero_grad()
+
+		# feed forward and loss
+		# From https://discuss.pytorch.org/t/how-to-optimize-inception-model-with-auxiliary-classifiers/7958
+		pred, aux_pred = model(xb)
+		loss1 = loss_func(pred, yb)
+		loss2 = loss_func(aux_pred, yb)
+		loss = loss1 + 0.4*loss2
+
+		# backprop nad applying gradients 
+		loss.backward()
+		optimizer.step()
+
+		# telemetry
+		running_loss += loss.item()
+		if batch_idx % log_interval == log_interval - 1:
+			avg_loss = running_loss / log_interval # log_interval == batch count for aggregation
+			running_loss = 0.0
+			logs.append(avg_loss)
+
+			if not silent:
+				print('Train Epoch: {} -> batch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
+					epoch, batch_idx, batch_idx * len(xb), len(loader.dataset),
+					100. * batch_idx / len(loader), avg_loss
+				))
+
+	return logs
+
+
 def get_mnist_loaders(batch_size, test_batch_size=None, cutoff=1):
 	if not test_batch_size: test_batch_size = batch_size * 2
 
@@ -112,11 +146,11 @@ def get_mnist_loaders(batch_size, test_batch_size=None, cutoff=1):
 	return train_dl, val_dl, test_dl
 
 
-def get_cifar10_loaders(batch_size, test_batch_size=None):
+def get_cifar10_loaders(batch_size, test_batch_size=None, image_size=224):
 	if not test_batch_size: test_batch_size = batch_size * 2
 
 	transform = torchvision.transforms.Compose([
-		torchvision.transforms.Resize(224),
+		torchvision.transforms.Resize(image_size),
 		torchvision.transforms.ToTensor(),
 		torchvision.transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
 	])
