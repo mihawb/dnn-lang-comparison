@@ -43,7 +43,7 @@ def classifier_overlay(inputs):
 	return x
 
 
-def combine_model(inputs, predef_model, classifier, image_size=224):
+def combine_model(inputs, predef_model, classifier, image_size=32):
 
   predef_model_materialised = predef_model(
     input_shape=(image_size, image_size, 3),

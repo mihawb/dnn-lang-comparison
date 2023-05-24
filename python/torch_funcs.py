@@ -146,7 +146,7 @@ def get_mnist_loaders(batch_size, test_batch_size=None, cutoff=1):
 	return train_dl, val_dl, test_dl
 
 
-def get_cifar10_loaders(batch_size, test_batch_size=None, image_size=224):
+def get_cifar10_loaders(batch_size, test_batch_size=None, image_size=32):
 	if not test_batch_size: test_batch_size = batch_size * 2
 
 	transform = torchvision.transforms.Compose([
