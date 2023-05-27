@@ -1,6 +1,4 @@
-function [imgs, labels] = loadImgsAndLabels(imgs_path,labels_path)
-%UNTITLED Summary of this function goes here
-%   Detailed explanation goes here
+function [imgs, labels] = loadMNISTImgsAndLabels(imgs_path,labels_path)
 
 %% loading in files
 i_hand = fopen(imgs_path);
@@ -17,11 +15,11 @@ fseek(l_hand, 4, 'cof');
 %% parsing 
 imgs = fread(i_hand, inf, 'uint8');
 imgs = double(255 - imgs) / 255;
-imgs = reshape(imgs, 28, 28, n_imgs);
-imgs = permute(imgs, [2 1 3]);
-imgs = reshape(imgs, 28 * 28, n_imgs);
+imgs = reshape(imgs, 28, 28, 1, n_imgs);
+imgs = permute(imgs, [2 1 3 4]);
 
 labels = fread(l_hand, inf, 'uint8');
+labels = categorical(labels);
 
 %% free 
 fclose(i_hand);
