@@ -1,3 +1,4 @@
 */__pycache__
 datasets/cifar-10-py/*
-!datasets/cifar-10-py/.gitkeep
+datasets/cifar-10-matlab/*
+!datasets/*/.gitkeep
