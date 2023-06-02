@@ -4,6 +4,7 @@ from datetime import datetime
 import pandas as pd
 import multiprocessing as mp
 
+
 def setup():
 	gpus = tf.config.experimental.list_physical_devices('GPU')
 	if gpus:
@@ -36,8 +37,9 @@ def env_builder(name, config):
 	return model, train_ds, test_ds
 
 
-def train_single_model(model_name, config, telemetry):
+def train_single_model(model_name, config, telemetry, child_conn):
 	print(f'Benchmarks for {model_name} begin')
+	setup()
 
 	model, train_ds, test_ds = env_builder(model_name, config)
 	optimizer = tf.keras.optimizers.SGD(learning_rate=config['lr'], momentum=config['momentum'])
@@ -67,19 +69,15 @@ def train_single_model(model_name, config, telemetry):
 	telemetry['trloss'].extend(train_history.history['loss'])
 	telemetry['acc'].extend(train_history.history['val_accuracy'])
 	# eps and times handeled by PerfCounterCallback
-
+	child_conn.send(telemetry)
 	pd.DataFrame(telemetry).to_csv(f'../results/tensorflow_results_batchsize{config["batch_size"]}_{config["now"]}.csv', index=False)
 
 	del model, train_ds, test_ds, train_history
 
 
-def run_single_model(model_name, config, telemetry):
-	setup()
-	train_single_model(model_name, config, telemetry)
-
-
 if __name__ == '__main__':
 	mp.set_start_method('spawn')
+	parent_conn, child_conn = mp.Pipe()
 
 	telemetry = {
 		'mnames': [],
@@ -101,6 +99,8 @@ if __name__ == '__main__':
 	}
 		
 	for model_name in ('fcnet', 'resnet50', 'densenet121', 'mobilenet_v2', 'convnext_base'):
-		p = mp.Process(target=run_single_model, args=(model_name, config, telemetry))
+		p = mp.Process(target=train_single_model, args=(model_name, config, telemetry, child_conn))
 		p.start()
+		telemetry = parent_conn.recv()
 		p.join()
+		
