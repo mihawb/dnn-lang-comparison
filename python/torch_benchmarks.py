@@ -63,28 +63,28 @@ telemetry = {
 	'times': []
 }
 
+if __name__ == '__main__':
+	for model_name in ('fcnet', 'resnet50', 'densenet121', 'mobilenet_v2', 'convnext_base'):
+		print(f'Benchmarks for {model_name} begin')
 
-for model_name in ('fcnet', 'resnet50', 'densenet121', 'mobilenet_v2', 'convnext_base'):
-	print(f'Benchmarks for {model_name} begin')
+		model, train_dl, test_dl, loss_func = env_builder(model_name)
+		model = model.to(device)
+		opt = optim.SGD(model.parameters(), lr=lr, momentum=momentum)
 
-	model, train_dl, test_dl, loss_func = env_builder(model_name)
-	model = model.to(device)
-	opt = optim.SGD(model.parameters(), lr=lr, momentum=momentum)
+		for epoch in range(1, epochs + 1):
+			start.record()
+			train_history = fit(model, device, train_dl, loss_func, epoch, optimizer=opt, log_interval=log_interval, silent=False)
+			end.record()
+			torch.cuda.synchronize()
 
-	for epoch in range(1, epochs + 1):
-		start.record()
-		train_history = fit(model, device, train_dl, loss_func, epoch, optimizer=opt, log_interval=log_interval, silent=False)
-		end.record()
-		torch.cuda.synchronize()
+			accuracy = test(model, device, test_dl, loss_func, silent=True)
 
-		accuracy = test(model, device, test_dl, loss_func, silent=True)
+			telemetry['mnames'].append(model_name)
+			telemetry['eps'].append(epoch)
+			telemetry['trloss'].append(train_history[-1])
+			telemetry['acc'].append(accuracy)
+			telemetry['times'].append(start.elapsed_time(end))
 
-		telemetry['mnames'].append(model_name)
-		telemetry['eps'].append(epoch)
-		telemetry['trloss'].append(train_history[-1])
-		telemetry['acc'].append(accuracy)
-		telemetry['times'].append(start.elapsed_time(end))
-
-		pd.DataFrame(telemetry).to_csv(f'../results/{results_filename}', index=False)
-		
-	del model
+			pd.DataFrame(telemetry).to_csv(f'../results/{results_filename}', index=False)
+			
+		del model
