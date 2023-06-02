@@ -1,7 +1,7 @@
 import torch
 import torch.nn.functional as F
 import torch.nn as nn
-from torchvision.models import resnet50, densenet121, mobilenet_v2, convnext_base
+from torchvision.models import resnet50, densenet121, mobilenet_v2, convnext_small, convnext_base
 import torch.optim as optim
 from torch_funcs import fit, test, get_cifar10_loaders, get_mnist_loaders, FullyConnectedNet
 from datetime import datetime
@@ -10,12 +10,12 @@ import pandas as pd
 
 batch_size = 32
 test_batch_size = 64
-epochs = 2
-lr = 1e-3
+epochs = 15
+lr = 1e-2
 momentum = 0.9
 num_classes = 10
 log_interval = 300
-results_filename = f'pytorch_results_{str(datetime.now()).replace(" ", "_").replace(".", ":")}.csv'
+results_filename = f'pytorch_results_batchsize{batch_size}_{str(datetime.now()).replace(" ", "_").replace(".", ":")}.csv'
 start = torch.cuda.Event(enable_timing=True)
 end = torch.cuda.Event(enable_timing=True)
 
@@ -66,6 +66,7 @@ telemetry = {
 
 for model_name in ('fcnet', 'resnet50', 'densenet121', 'mobilenet_v2', 'convnext_base'):
 	print(f'Benchmarks for {model_name} begin')
+
 	model, train_dl, test_dl, loss_func = env_builder(model_name)
 	model = model.to(device)
 	opt = optim.SGD(model.parameters(), lr=lr, momentum=momentum)
@@ -87,5 +88,3 @@ for model_name in ('fcnet', 'resnet50', 'densenet121', 'mobilenet_v2', 'convnext
 		pd.DataFrame(telemetry).to_csv(f'../results/{results_filename}', index=False)
 		
 	del model
-
-

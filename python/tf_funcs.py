@@ -1,5 +1,6 @@
 import tensorflow as tf
 from load_datasets import load_mnist_imgs_and_labels
+from time import perf_counter_ns
 
 
 def get_cifar10_data(preprocess=None):
@@ -9,7 +10,7 @@ def get_cifar10_data(preprocess=None):
   if preprocess is not None:
     x_train, x_test = preprocess(x_train), preprocess(x_test)
 
-  return x_train, y_train, x_test, y_test
+  return (x_train, y_train), (x_test, y_test)
 
 
 def get_mnist_loaders(batch_size, test_batch_size=None):
@@ -58,6 +59,25 @@ def combine_model(inputs, predef_model, classifier, image_size=32):
   combined = tf.keras.Model(inputs=inputs, outputs=classification_output)
 
   return combined
+
+
+class PerfCounterCallback(tf.keras.callbacks.Callback):
+	def __init__(self, telemetry_ref):
+		super().__init__()
+		self.telemetry_ref = telemetry_ref
+		self.times = []
+		self.eps = []
+
+	def on_epoch_begin(self, epoch, logs=None):
+		self.ep_start = perf_counter_ns()
+
+	def on_epoch_end(self, epoch, logs=None):
+		self.times.append(perf_counter_ns() - self.ep_start)
+		self.eps.append(epoch + 1)
+
+	def on_train_end(self, logs=None):
+		self.telemetry_ref['eps'].extend(self.eps)
+		self.telemetry_ref['times'].extend(self.times)
 
 
 class FullyConnectedNet(tf.keras.Model):
