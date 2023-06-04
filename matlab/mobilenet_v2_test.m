@@ -5,7 +5,7 @@ close all;
 %% config
 momentum = 0.9;
 lr = 0.01;
-epochs = 1;
+epochs = 15;
 batch_size = 32;
 
 %% loading data

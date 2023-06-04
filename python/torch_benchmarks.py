@@ -1,7 +1,7 @@
 import torch
 import torch.nn.functional as F
 import torch.nn as nn
-from torchvision.models import resnet50, densenet121, mobilenet_v2, convnext_small, convnext_base
+from torchvision.models import resnet50, densenet121, mobilenet_v2, convnext_small
 import torch.optim as optim
 from torch_funcs import fit, test, get_cifar10_loaders, get_mnist_loaders, FullyConnectedNet
 from datetime import datetime
@@ -39,9 +39,9 @@ def env_builder(name: str):
 	elif name == 'mobilenet_v2':
 		model = mobilenet_v2()
 		model.classifier[1] = nn.Linear(in_features=1280, out_features=num_classes, bias=True)
-	elif name == 'convnext_base':
-		model = convnext_base()
-		model.classifier[2] = nn.Linear(in_features=1024, out_features=num_classes, bias=True)
+	elif name == 'convnext_small':
+		model = convnext_small()
+		model.classifier[2] = nn.Linear(in_features=768, out_features=num_classes, bias=True)
 	else:
 		raise ValueError('Invalid model name')
 
@@ -64,7 +64,7 @@ telemetry = {
 }
 
 if __name__ == '__main__':
-	for model_name in ('fcnet', 'resnet50', 'densenet121', 'mobilenet_v2', 'convnext_base'):
+	for model_name in ('fcnet', 'resnet50', 'densenet121', 'mobilenet_v2', 'convnext_small'):
 		print(f'Benchmarks for {model_name} begin')
 
 		model, train_dl, test_dl, loss_func = env_builder(model_name)

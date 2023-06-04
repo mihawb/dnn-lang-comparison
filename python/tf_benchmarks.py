@@ -28,8 +28,8 @@ def env_builder(name, config):
 	elif name == 'mobilenet_v2':
 		model = combine_model(config['inputs'], tf.keras.applications.MobileNetV2, classifier_overlay)
 		train_ds, test_ds = get_cifar10_data(tf.keras.applications.mobilenet_v2.preprocess_input)
-	elif name == 'convnext_base':
-		model = combine_model(config['inputs'], tf.keras.applications.ConvNeXtBase, classifier_overlay)
+	elif name == 'convnext_small':
+		model = combine_model(config['inputs'], tf.keras.applications.ConvNeXtSmall, classifier_overlay)
 		train_ds, test_ds = get_cifar10_data(tf.keras.applications.convnext.preprocess_input)
 	else:
 		raise ValueError('Invalid model name')
@@ -90,7 +90,7 @@ if __name__ == '__main__':
 	config = {
 		'batch_size': 32,
 		'test_batch_size': 64,
-		'epochs': 2,
+		'epochs': 15,
 		'lr': 1e-2,
 		'momentum': 0.0,
 		'inputs': tf.keras.layers.Input(shape=(32,32,3)),
@@ -98,7 +98,7 @@ if __name__ == '__main__':
 		'now': str(datetime.now()).replace(" ", "_").replace(".", ":")
 	}
 		
-	for model_name in ('fcnet', 'resnet50', 'densenet121', 'mobilenet_v2', 'convnext_base'):
+	for model_name in ('fcnet', 'resnet50', 'densenet121', 'mobilenet_v2', 'convnext_small'):
 		p = mp.Process(target=train_single_model, args=(model_name, config, telemetry, child_conn))
 		p.start()
 		telemetry = parent_conn.recv()
