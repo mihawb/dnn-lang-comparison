@@ -8,3 +8,4 @@ datasets/mnist-digits/*
 *.out
 .vscode
 cpp_old/
+python/*_test.ipynb
