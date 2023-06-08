@@ -118,16 +118,16 @@ def get_mnist_loaders(batch_size, test_batch_size=None, cutoff=1):
 	if not test_batch_size: test_batch_size = batch_size * 2
 
 	x_train, y_train = load_mnist_imgs_and_labels(
-		'../datasets/mnist-digits/train-images.idx3-ubyte',
-		'../datasets/mnist-digits/train-labels.idx1-ubyte'
+		'../datasets/mnist-digits/train-images-idx3-ubyte',
+		'../datasets/mnist-digits/train-labels-idx1-ubyte'
 	)
 
 	x_train, x_val = np.split(x_train, [int(len(x_train) * cutoff)])
 	y_train, y_val = np.split(y_train, [int(len(y_train) * cutoff)])
 
 	x_test, y_test = load_mnist_imgs_and_labels(
-		'../datasets/mnist-digits/t10k-images.idx3-ubyte',
-		'../datasets/mnist-digits/t10k-labels.idx1-ubyte'
+		'../datasets/mnist-digits/t10k-images-idx3-ubyte',
+		'../datasets/mnist-digits/t10k-labels-idx1-ubyte'
 	)
 
 	x_train, y_train, x_val, y_val, x_test, y_test = map(

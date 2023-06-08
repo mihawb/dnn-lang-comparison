@@ -1,4 +1,10 @@
 */__pycache__
 datasets/cifar-10-py/*
 datasets/cifar-10-matlab/*
+datasets/mnist-digits/*
+!datasets/mnist-digits/download_mnist.sh
 !datasets/*/.gitkeep
+*.o
+*.out
+.vscode
+cpp_old/

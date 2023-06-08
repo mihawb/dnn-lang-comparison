@@ -17,13 +17,13 @@ def get_mnist_loaders(batch_size, test_batch_size=None):
 	if not test_batch_size: test_batch_size = batch_size * 2
 
 	x_train, y_train = load_mnist_imgs_and_labels(
-		'../datasets/mnist-digits/train-images.idx3-ubyte',
-		'../datasets/mnist-digits/train-labels.idx1-ubyte'
+		'../datasets/mnist-digits/train-images-idx3-ubyte',
+		'../datasets/mnist-digits/train-labels-idx1-ubyte'
 	)
 
 	x_test, y_test = load_mnist_imgs_and_labels(
-		'../datasets/mnist-digits/t10k-images.idx3-ubyte',
-		'../datasets/mnist-digits/t10k-labels.idx1-ubyte'
+		'../datasets/mnist-digits/t10k-images-idx3-ubyte',
+		'../datasets/mnist-digits/t10k-labels-idx1-ubyte'
 	)
 
 	train_ds = tf.data.Dataset.from_tensor_slices((x_train, y_train))
