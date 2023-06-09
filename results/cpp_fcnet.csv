@@ -1,0 +1,16 @@
+mnames,type,eps,trloss,acc,times
+fcnet,training,1,0.581373,86.4688,487.043
+fcnet,training,2,0.581373,86.4688,412.932
+fcnet,training,3,0.581373,86.4688,382.441
+fcnet,training,4,0.581373,86.4688,382.224
+fcnet,training,5,0.581373,86.4688,382.986
+fcnet,training,6,0.581373,86.4688,383.333
+fcnet,training,7,0.581373,86.4688,382.91
+fcnet,training,8,0.581373,86.4688,382.703
+fcnet,training,9,0.581373,86.4688,382.778
+fcnet,training,10,0.581373,86.4688,382.515
+fcnet,training,11,0.581373,86.4688,382.635
+fcnet,training,12,0.581373,86.4688,382.368
+fcnet,training,13,0.581373,86.4688,382.858
+fcnet,training,14,0.581373,86.4688,382.162
+fcnet,training,15,0.581373,86.4688,383.136

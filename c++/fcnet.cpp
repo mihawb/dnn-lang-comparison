@@ -4,6 +4,8 @@
 
 #include <iomanip>
 #include <nvtx3/nvToolsExt.h>
+#include <iostream>
+#include <fstream>
 
 using namespace cudl;
 
@@ -13,7 +15,7 @@ int main(int argc, char* argv[])
     int batch_size_train = 32;
     int num_steps_in_ep_train = 60000 / batch_size_train;
     int monitoring_step = 200;
-    int epochs = 2;
+    int epochs = 15;
 
     double learning_rate = 0.02f;
     double lr_decay = 0.00005f;
@@ -24,6 +26,9 @@ int main(int argc, char* argv[])
     int batch_size_test = 10;
     int num_steps_test = 1000;
 
+    std::ofstream results_file;
+    results_file.open("../results/cpp_fcnet.csv", std::ios::out);
+    results_file << "mnames,type,eps,trloss,acc,times" << std::endl;
 
     /* Welcome Message */
     std::cout << "== MNIST training with CUDNN ==" << std::endl;
@@ -37,10 +42,10 @@ int main(int argc, char* argv[])
 
     // step 2. model initialization
     Network model;
-    model.add_layer(new Conv2D("conv1", 20, 5));
-    model.add_layer(new Pooling("pool", 2, 0, 2, CUDNN_POOLING_MAX));
-    model.add_layer(new Conv2D("conv2", 50, 5));
-    model.add_layer(new Pooling("pool", 2, 0, 2, CUDNN_POOLING_MAX));
+    // model.add_layer(new Conv2D("conv1", 20, 5));
+    // model.add_layer(new Pooling("pool", 2, 0, 2, CUDNN_POOLING_MAX));
+    // model.add_layer(new Conv2D("conv2", 50, 5));
+    // model.add_layer(new Pooling("pool", 2, 0, 2, CUDNN_POOLING_MAX));
     model.add_layer(new Dense("dense1", 500));
     model.add_layer(new Activation("relu", CUDNN_ACTIVATION_RELU));
     model.add_layer(new Dense("dense2", 10));
@@ -63,6 +68,9 @@ int main(int argc, char* argv[])
     for (int epoch = 1; epoch <= epochs; epoch++)
     {
         int tp_count = 0;
+        float loss;
+        float accuracy;
+
         int step = train_data_loader.train_reset();
         train_data_loader.get_batch();
 
@@ -105,8 +113,8 @@ int main(int argc, char* argv[])
             // calculation softmax loss
             if (step % monitoring_step == 0)
             {
-                float loss = model.loss(train_target);
-                float accuracy =  100.f * tp_count / monitoring_step / batch_size_train;
+                loss = model.loss(train_target);
+                accuracy =  100.f * tp_count / monitoring_step / batch_size_train;
                 
                 std::cout << "epoch: " << std::right << std::setw(2) << epoch << \
                             ", step: " << std::right << std::setw(4) << step << \
@@ -121,6 +129,8 @@ int main(int argc, char* argv[])
         cudaEventSynchronize(stop);
         cudaEventElapsedTime(&milliseconds, start, stop);
         std::cout << "Epoch time: " << milliseconds << " ms" << std::endl;
+
+        results_file << "fcnet,training," << epoch << "," << loss << "," << accuracy << "," << milliseconds << std::endl;
     }
 
     // trained parameter save
@@ -171,6 +181,7 @@ int main(int argc, char* argv[])
 
     // Good bye
     std::cout << "Done." << std::endl;
+    results_file.close();
 
     return 0;
 }
