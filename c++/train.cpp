@@ -1,6 +1,7 @@
 #include "src/mnist.h"
 #include "src/network.h"
 #include "src/layer.h"
+#include "src/builders.h"
 
 #include <iomanip>
 #include <nvtx3/nvToolsExt.h>
@@ -11,6 +12,20 @@ using namespace cudl;
 
 int main(int argc, char* argv[])
 {
+    int which_model;
+    std::string model_name = argc > 1 ? argv[1] : "__invalid__";
+
+    if (model_name.compare("fcnet") == 0)
+        which_model = 0;
+    else if (model_name.compare("scvnet") == 0)
+        which_model = 1;
+    else {
+        std::cout << "Invalid model name.\nChoose one of the following:\nfcnet, scvnet" << std::endl;
+        return 1; 
+    }
+
+    std::cout << "Using model: " << model_name << std::endl;
+
     /* configure the network */
     int batch_size_train = 32;
     int num_steps_in_ep_train = 60000 / batch_size_train;
@@ -27,7 +42,7 @@ int main(int argc, char* argv[])
     int num_steps_test = 1000;
 
     std::ofstream results_file;
-    results_file.open("../results/cpp_fcnet.csv", std::ios::out);
+    results_file.open("../results/cpp_"+model_name+".csv", std::ios::out);
     results_file << "mnames,type,eps,trloss,acc,times" << std::endl;
 
     /* Welcome Message */
@@ -42,14 +57,7 @@ int main(int argc, char* argv[])
 
     // step 2. model initialization
     Network model;
-    // model.add_layer(new Conv2D("conv1", 20, 5));
-    // model.add_layer(new Pooling("pool", 2, 0, 2, CUDNN_POOLING_MAX));
-    // model.add_layer(new Conv2D("conv2", 50, 5));
-    // model.add_layer(new Pooling("pool", 2, 0, 2, CUDNN_POOLING_MAX));
-    model.add_layer(new Dense("dense1", 500));
-    model.add_layer(new Activation("relu", CUDNN_ACTIVATION_RELU));
-    model.add_layer(new Dense("dense2", 10));
-    model.add_layer(new Softmax("softmax"));
+    ModelFactory(model, which_model);
     model.cuda();
 
     if (load_pretrain)
@@ -74,12 +82,6 @@ int main(int argc, char* argv[])
         int step = train_data_loader.train_reset();
         train_data_loader.get_batch();
 
-        // tutaj dodac zmienne 
-        // mnames,eps,trloss,acc,times
-        // updateowac trloss i acc wewnatrz while
-        // na koneic fora (kazdy epoch) zapisac te zmienne do pliku w formacie csv
-
-        // potem jeszcze dodac cuda event measurement
         cudaEventRecord(start);
 
         while (step < num_steps_in_ep_train)
@@ -130,7 +132,7 @@ int main(int argc, char* argv[])
         cudaEventElapsedTime(&milliseconds, start, stop);
         std::cout << "Epoch time: " << milliseconds << " ms" << std::endl;
 
-        results_file << "fcnet,training," << epoch << "," << loss << "," << accuracy << "," << milliseconds << std::endl;
+        results_file << model_name << ",training," << epoch << "," << loss << "," << accuracy << "," << milliseconds << std::endl;
     }
 
     // trained parameter save

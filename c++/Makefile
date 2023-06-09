@@ -1,7 +1,7 @@
 CUDA_PATH=/usr/local/cuda
 HOST_COMPILER ?= g++
 NVCC=${CUDA_PATH}/bin/nvcc -ccbin ${HOST_COMPILER}
-TARGET=fcnet.out convolution.out
+TARGET=train.out convolution.out
 
 INCLUDES = -I${CUDA_PATH}/samples/common/inc -I$(CUDA_PATH)/include
 NVCC_FLAGS=-G --resource-usage -Xcompiler -rdynamic -Xcompiler -fopenmp -rdc=true -lnvToolsExt
@@ -30,13 +30,13 @@ ${OBJ_DIR}/%.o: ${SRC_DIR}/%.cpp ${INCS}
 ${OBJ_DIR}/%.o: ${SRC_DIR}/%.cu ${INCS}
 	$(NVCC) $(INCLUDES) $(ALL_CCFLAGS) $(GENCODE_FLAGS) -c $< -o $@
 
-${OBJ_DIR}/fcnet.o: fcnet.cpp ${INCS}
+${OBJ_DIR}/train.o: train.cpp ${INCS}
 	@mkdir -p $(@D)
 	$(NVCC) $(INCLUDES) $(ALL_CCFLAGS) $(GENCODE_FLAGS) -c $< -o $@
 
-OBJS = ${OBJ_DIR}/fcnet.o ${OBJ_DIR}/mnist.o ${OBJ_DIR}/loss.o ${OBJ_DIR}/layer.o ${OBJ_DIR}/network.o 
+OBJS = ${OBJ_DIR}/train.o ${OBJ_DIR}/mnist.o ${OBJ_DIR}/loss.o ${OBJ_DIR}/layer.o ${OBJ_DIR}/network.o ${OBJ_DIR}/builders.o
 
-fcnet.out: $(OBJS)
+train.out: $(OBJS)
 	$(EXEC) $(NVCC) $(ALL_CCFLAGS) $(GENCODE_FLAGS) -o $@ $+
 
 convolution.out: convolution.cu
