@@ -46,6 +46,8 @@ def train_single_model(model_name, config, telemetry, child_conn):
 	model.compile(optimizer=optimizer, loss=config['loss_func'], metrics=['accuracy'])
 	perfcounter = PerfCounterCallback(telemetry)
 
+
+	# training 
 	if isinstance(train_ds, tuple):
 		train_history = model.fit(
 			train_ds[0], train_ds[1],
@@ -66,9 +68,31 @@ def train_single_model(model_name, config, telemetry, child_conn):
 		)
 
 	telemetry['mnames'].extend([model_name] * config['epochs'])
-	telemetry['trloss'].extend(train_history.history['loss'])
+	telemetry['type'].extend(['training'] * config['epochs'])
+	telemetry['loss'].extend(train_history.history['loss'])
 	telemetry['acc'].extend(train_history.history['val_accuracy'])
 	# eps and times handeled by PerfCounterCallback
+
+	# inference
+	if isinstance(test_ds, tuple):
+		eval_history = model.evaluate(
+			test_ds[0], test_ds[1],
+			batch_size=config['test_batch_size'],
+			callbacks=[perfcounter]
+		)
+	else:
+		eval_history = model.evaluate(
+			test_ds,
+			batch_size=config['test_batch_size'],
+			callbacks=[perfcounter]
+		)
+
+	telemetry['mnames'].append(model_name)
+	telemetry['type'].append('inference')
+	telemetry['loss'].append(eval_history[0])
+	telemetry['acc'].append(eval_history[1])
+	# eps and times handeled by PerfCounterCallback
+
 	child_conn.send(telemetry)
 	pd.DataFrame(telemetry).to_csv(f'../results/tensorflow_results_batchsize{config["batch_size"]}_{config["now"]}.csv', index=False)
 
@@ -81,8 +105,9 @@ if __name__ == '__main__':
 
 	telemetry = {
 		'mnames': [],
+		'type': [],
 		'eps': [],
-		'trloss': [],
+		'loss': [],
 		'acc': [],
 		'times': []
 	}

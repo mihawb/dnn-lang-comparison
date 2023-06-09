@@ -88,7 +88,6 @@ if __name__ == '__main__':
 			telemetry['loss'].append(train_history[-1])
 			telemetry['acc'].append(accuracy)
 			telemetry['times'].append(start.elapsed_time(end))
-			pd.DataFrame(telemetry).to_csv(f'../results/{results_filename}', index=False)
 
 		# inference
 		start.record()

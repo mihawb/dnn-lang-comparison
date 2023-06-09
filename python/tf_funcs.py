@@ -67,6 +67,11 @@ class PerfCounterCallback(tf.keras.callbacks.Callback):
 		self.telemetry_ref = telemetry_ref
 		self.times = []
 		self.eps = []
+		self.training = False
+
+	# for training
+	def on_train_begin(self, logs=None):
+		self.training = True
 
 	def on_epoch_begin(self, epoch, logs=None):
 		self.ep_start = perf_counter_ns()
@@ -78,6 +83,16 @@ class PerfCounterCallback(tf.keras.callbacks.Callback):
 	def on_train_end(self, logs=None):
 		self.telemetry_ref['eps'].extend(self.eps)
 		self.telemetry_ref['times'].extend(self.times)
+		self.training = False
+
+	# for evaluation
+	def on_test_begin(self, logs=None):
+		self.test_start = perf_counter_ns()
+
+	def on_test_end(self, logs=None):
+		if self.training: return 
+		self.telemetry_ref['times'].append(perf_counter_ns() - self.test_start)
+		self.telemetry_ref['eps'].append(1)
 
 
 class FullyConnectedNet(tf.keras.Model):
