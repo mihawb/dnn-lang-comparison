@@ -8,7 +8,7 @@ With author's copyright notice attached.
 $ bash ./datasets/mnist-digits/download_mnist.sh
 $ cd c++
 $ make
-$ ./fcnet.out 0
+$ ./fcnet.out fcnet
 ```
 
 ## Expected output

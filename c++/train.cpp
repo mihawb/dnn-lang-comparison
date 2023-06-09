@@ -38,8 +38,8 @@ int main(int argc, char* argv[])
     bool load_pretrain = false;
     bool file_save = false;
 
-    int batch_size_test = 10;
-    int num_steps_test = 1000;
+    int batch_size_test = 64;
+    int num_steps_test = 1000 / batch_size_test;
 
     std::ofstream results_file;
     results_file.open("../results/cpp_"+model_name+".csv", std::ios::out);
@@ -154,8 +154,10 @@ int main(int argc, char* argv[])
     test_data_loader.get_batch();
     int tp_count = 0;
     int step = 0;
+    cudaEventRecord(start);
     while (step < num_steps_test)
     {
+
         // nvtx profiling start
         std::string nvtx_message = std::string("step" + std::to_string(step));
         nvtxRangePushA(nvtx_message.c_str());
@@ -173,13 +175,18 @@ int main(int argc, char* argv[])
 
         // nvtx profiling stop
         nvtxRangePop();
-    }
+    }    
+    cudaEventRecord(stop);
+    cudaEventSynchronize(stop);
+    cudaEventElapsedTime(&milliseconds, start, stop);
+    std::cout << "Inference time: " << milliseconds << " ms" << std::endl;
 
     // step 4. calculate loss and accuracy
     float loss = model.loss(test_target);
     float accuracy = 100.f * tp_count / num_steps_test / batch_size_test;
 
     std::cout << "loss: " << std::setw(4) << loss << ", accuracy: " << accuracy << "%" << std::endl;
+    results_file << model_name << ",inference,1," << loss << "," << accuracy << "," << milliseconds << std::endl;
 
     // Good bye
     std::cout << "Done." << std::endl;
