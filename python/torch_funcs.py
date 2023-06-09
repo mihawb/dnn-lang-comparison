@@ -12,6 +12,7 @@ import torchvision
 def fit(model, device, loader, loss_func, epoch, optimizer, log_interval=100, silent=False):
 	'''
 	Fit model's parameters to train data.
+	Returns list of training losses for every `log_interval`th batch.
 	'''
 	model.train()
 	logs = []
@@ -47,9 +48,10 @@ def fit(model, device, loader, loss_func, epoch, optimizer, log_interval=100, si
 	return logs
 
 
-def test(model, device, loader, loss_func, silent=False):
+def test(model, device, loader, loss_func, silent=False) -> tuple[float, float]:
 	'''
 	Test model's performance on validation or test data.
+	Returns test loss and accuracy.
 	'''
 	model.eval()
 	test_loss = 0
@@ -70,7 +72,8 @@ def test(model, device, loader, loss_func, silent=False):
 			test_loss, correct_pred, len(loader.dataset),
 			100. * correct_pred / len(loader.dataset)
 		))
-	return correct_pred / len(loader.dataset)
+
+	return test_loss, correct_pred / len(loader.dataset)
 
 
 def inception_fit(model, device, loader, loss_func, epoch, optimizer, log_interval=100, silent=False):

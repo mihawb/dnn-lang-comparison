@@ -43,7 +43,7 @@ int main(int argc, char* argv[])
 
     std::ofstream results_file;
     results_file.open("../results/cpp_"+model_name+".csv", std::ios::out);
-    results_file << "mnames,type,eps,trloss,acc,times" << std::endl;
+    results_file << "mnames,type,eps,loss,acc,times" << std::endl;
 
     /* Welcome Message */
     std::cout << "== MNIST training with CUDNN ==" << std::endl;

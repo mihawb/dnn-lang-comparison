@@ -57,11 +57,13 @@ def env_builder(name: str):
 
 telemetry = {
 	'mnames': [],
+	'type':[],
 	'eps': [],
-	'trloss': [],
+	'loss': [],
 	'acc': [],
 	'times': []
 }
+
 
 if __name__ == '__main__':
 	for model_name in ('fcnet', 'resnet50', 'densenet121', 'mobilenet_v2', 'convnext_small'):
@@ -71,20 +73,35 @@ if __name__ == '__main__':
 		model = model.to(device)
 		opt = optim.SGD(model.parameters(), lr=lr, momentum=momentum)
 
+		# training
 		for epoch in range(1, epochs + 1):
 			start.record()
 			train_history = fit(model, device, train_dl, loss_func, epoch, optimizer=opt, log_interval=log_interval, silent=False)
 			end.record()
 			torch.cuda.synchronize()
 
-			accuracy = test(model, device, test_dl, loss_func, silent=True)
+			_, accuracy = test(model, device, test_dl, loss_func, silent=True)
 
 			telemetry['mnames'].append(model_name)
+			telemetry['type'].append('training')
 			telemetry['eps'].append(epoch)
-			telemetry['trloss'].append(train_history[-1])
+			telemetry['loss'].append(train_history[-1])
 			telemetry['acc'].append(accuracy)
 			telemetry['times'].append(start.elapsed_time(end))
-
 			pd.DataFrame(telemetry).to_csv(f'../results/{results_filename}', index=False)
-			
+
+		# inference
+		start.record()
+		loss, accuracy = test(model, device, test_dl, loss_func, silent=True)
+		end.record()
+		torch.cuda.synchronize()
+
+		telemetry['mnames'].append(model_name)
+		telemetry['type'].append('inference')
+		telemetry['eps'].append(1)
+		telemetry['loss'].append(loss)
+		telemetry['acc'].append(accuracy)
+		telemetry['times'].append(start.elapsed_time(end))
+		pd.DataFrame(telemetry).to_csv(f'../results/{results_filename}', index=False)
+
 		del model
