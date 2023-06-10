@@ -1,6 +1,5 @@
 import tensorflow as tf
-from tf_funcs import get_cifar10_data, get_mnist_loaders, classifier_overlay, combine_model, FullyConnectedNet, PerfCounterCallback
-from datetime import datetime
+from tf_funcs import get_cifar10_data, get_mnist_loaders, classifier_overlay, combine_model, FullyConnectedNet, SimpleConvNetBuilder, PerfCounterCallback
 import pandas as pd
 import multiprocessing as mp
 
@@ -19,6 +18,9 @@ def env_builder(name, config):
 	if name == 'fcnet':
 		model = FullyConnectedNet()
 		train_ds, test_ds = get_mnist_loaders(config['batch_size'], config['test_batch_size'])
+	elif name == 'scvnet':
+		model = SimpleConvNetBuilder()
+		train_ds, test_ds = get_mnist_loaders(config['batch_size'], config['test_batch_size'], flatten=False)
 	elif name == 'resnet50':
 		model = combine_model(config['inputs'], tf.keras.applications.ResNet50, classifier_overlay)
 		train_ds, test_ds = get_cifar10_data(tf.keras.applications.resnet50.preprocess_input)
@@ -94,7 +96,7 @@ def train_single_model(model_name, config, telemetry, child_conn):
 	# eps and times handeled by PerfCounterCallback
 
 	child_conn.send(telemetry)
-	pd.DataFrame(telemetry).to_csv(f'../results/tensorflow_results_batchsize{config["batch_size"]}_{config["now"]}.csv', index=False)
+	pd.DataFrame(telemetry).to_csv(f'../results/tensorflow_results.csv', index=False)
 
 	del model, train_ds, test_ds, train_history
 
@@ -119,11 +121,11 @@ if __name__ == '__main__':
 		'lr': 1e-2,
 		'momentum': 0.0,
 		'inputs': tf.keras.layers.Input(shape=(32,32,3)),
-		'loss_func': tf.keras.losses.SparseCategoricalCrossentropy(from_logits=False),
-		'now': str(datetime.now()).replace(" ", "_").replace(".", ":")
+		'loss_func': tf.keras.losses.SparseCategoricalCrossentropy(from_logits=False)
 	}
 		
-	for model_name in ('fcnet', 'resnet50', 'densenet121', 'mobilenet_v2', 'convnext_small'):
+	# for model_name in ('fcnet', 'scvnet', 'resnet50', 'densenet121', 'mobilenet_v2', 'convnext_small'):
+	for model_name in ('scvnet',):
 		p = mp.Process(target=train_single_model, args=(model_name, config, telemetry, child_conn))
 		p.start()
 		telemetry = parent_conn.recv()

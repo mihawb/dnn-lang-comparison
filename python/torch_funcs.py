@@ -117,7 +117,7 @@ def inception_fit(model, device, loader, loss_func, epoch, optimizer, log_interv
 	return logs
 
 
-def get_mnist_loaders(batch_size, test_batch_size=None, cutoff=1):
+def get_mnist_loaders(batch_size, test_batch_size=None, cutoff=1, flatten=True):
 	if not test_batch_size: test_batch_size = batch_size * 2
 
 	x_train, y_train = load_mnist_imgs_and_labels(
@@ -132,6 +132,12 @@ def get_mnist_loaders(batch_size, test_batch_size=None, cutoff=1):
 		'../datasets/mnist-digits/t10k-images-idx3-ubyte',
 		'../datasets/mnist-digits/t10k-labels-idx1-ubyte'
 	)
+
+	if not flatten:
+		x_train, x_test = map(
+			lambda x: x.reshape(-1, 1, 28, 28),
+			(x_train, x_test)
+		)
 
 	x_train, y_train, x_val, y_val, x_test, y_test = map(
 		torch.tensor,
@@ -173,7 +179,6 @@ class FullyConnectedNet(nn.Module):
 		super(FullyConnectedNet, self).__init__()
 		self.layers = nn.ModuleList([nn.Linear(a, b, dtype=torch.float64) for a, b in zip(layers[:-1], layers[1:])])
 
-
 	def forward(self, x):
 		for layer in self.layers[:-1]:
 			x = F.relu(layer(x))
@@ -181,3 +186,28 @@ class FullyConnectedNet(nn.Module):
 		return F.log_softmax(x, dim=1)
 		# PyTorch best practice is to use LogSoftmax activation on output layer combined with NLL as loss function
 		# or to return logits from FF and apply CrossEntropy loss function
+
+
+class SimpleConvNet(nn.Module):
+
+	def __init__(self, num_classes=10):
+		super().__init__()
+		self.conv1 = nn.Sequential(         
+			nn.Conv2d(1, 16, 5, 1, 2, dtype=torch.float64),
+			nn.ReLU(),                                       
+			nn.MaxPool2d(2)
+		)
+		self.conv2 = nn.Sequential(         
+			nn.Conv2d(16, 32, 5, 1, 2, dtype=torch.float64),
+			nn.ReLU(),
+			nn.MaxPool2d(2),  
+		)
+		self.dense = nn.Linear(32 * 7 * 7, 500, dtype=torch.float64)
+		self.classifier = nn.Linear(500, num_classes, dtype=torch.float64) 
+
+	def forward(self, x):
+		x = self.conv1(x)
+		x = self.conv2(x)
+		x = torch.flatten(x, 1)
+		x = F.relu(self.dense(x))
+		return F.log_softmax(self.classifier(x), dim=1)

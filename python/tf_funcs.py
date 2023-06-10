@@ -13,7 +13,7 @@ def get_cifar10_data(preprocess=None):
   return (x_train, y_train), (x_test, y_test)
 
 
-def get_mnist_loaders(batch_size, test_batch_size=None):
+def get_mnist_loaders(batch_size, test_batch_size=None, flatten=True):
 	if not test_batch_size: test_batch_size = batch_size * 2
 
 	x_train, y_train = load_mnist_imgs_and_labels(
@@ -25,6 +25,12 @@ def get_mnist_loaders(batch_size, test_batch_size=None):
 		'../datasets/mnist-digits/t10k-images-idx3-ubyte',
 		'../datasets/mnist-digits/t10k-labels-idx1-ubyte'
 	)
+
+	if not flatten:
+		x_train, x_test = map(
+			lambda x: x.reshape(-1, 28, 28, 1),
+			(x_train, x_test)
+		)
 
 	train_ds = tf.data.Dataset.from_tensor_slices((x_train, y_train))
 	train_ds = train_ds.shuffle(buffer_size=1024).batch(batch_size)
@@ -107,7 +113,6 @@ class FullyConnectedNet(tf.keras.Model):
 		# combined with *Crossentrpy(from_logits=False) loss function
 		# instead of LogSoftmax (like in PyTorch) since NLL loss func is not implemented in TF
 
-
 	def call(self, x):
 		x = self.hidden_layers(x)
 		return self.output_layer(x)
@@ -119,3 +124,17 @@ def FullyConnectedNetBuilder(hidden_layers=[800], num_classes=10):
   layers = [tf.keras.layers.Dense(n, activation=tf.nn.relu) for n in hidden_layers]
   layers.append(tf.keras.layers.Dense(num_classes, activation='log_softmax'))
   return tf.keras.Sequential(layers)
+
+
+def SimpleConvNetBuilder(num_classes=10):
+	layers = [
+		tf.keras.Input(shape=(28, 28, 1)),
+		tf.keras.layers.Conv2D(16, kernel_size=5, activation='relu'),
+		tf.keras.layers.MaxPooling2D(pool_size=(2, 2)),
+		tf.keras.layers.Conv2D(32, kernel_size=5, activation='relu'),
+		tf.keras.layers.MaxPooling2D(pool_size=(2, 2)),
+		tf.keras.layers.Flatten(),
+		tf.keras.layers.Dense(500, activation='relu'),
+		tf.keras.layers.Dense(num_classes, activation='softmax'),
+	]
+	return tf.keras.Sequential(layers)

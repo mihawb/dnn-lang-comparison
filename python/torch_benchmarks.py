@@ -3,8 +3,7 @@ import torch.nn.functional as F
 import torch.nn as nn
 from torchvision.models import resnet50, densenet121, mobilenet_v2, convnext_small
 import torch.optim as optim
-from torch_funcs import fit, test, get_cifar10_loaders, get_mnist_loaders, FullyConnectedNet
-from datetime import datetime
+from torch_funcs import fit, test, get_cifar10_loaders, get_mnist_loaders, FullyConnectedNet, SimpleConvNet
 import pandas as pd
 
 
@@ -15,7 +14,6 @@ lr = 1e-2
 momentum = 0.9
 num_classes = 10
 log_interval = 300
-results_filename = f'pytorch_results_batchsize{batch_size}_{str(datetime.now()).replace(" ", "_").replace(".", ":")}.csv'
 start = torch.cuda.Event(enable_timing=True)
 end = torch.cuda.Event(enable_timing=True)
 
@@ -30,6 +28,8 @@ print(f'CUDA enabled: {use_cuda}')
 def env_builder(name: str): 
 	if name == 'fcnet':
 		model = FullyConnectedNet()
+	elif name == 'scvnet':
+		model = SimpleConvNet()
 	elif name == 'resnet50':
 		model = resnet50()
 		model.fc = nn.Linear(in_features=2048, out_features=num_classes, bias=True)
@@ -47,6 +47,9 @@ def env_builder(name: str):
 
 	if name == 'fcnet':
 		train_dl, _, test_dl = get_mnist_loaders(batch_size, test_batch_size)
+		loss_func = F.nll_loss
+	elif name == 'scvnet':
+		train_dl, _, test_dl = get_mnist_loaders(batch_size, test_batch_size, flatten=False)
 		loss_func = F.nll_loss
 	else:
 		train_dl, test_dl = get_cifar10_loaders(batch_size, test_batch_size)
@@ -66,7 +69,8 @@ telemetry = {
 
 
 if __name__ == '__main__':
-	for model_name in ('fcnet', 'resnet50', 'densenet121', 'mobilenet_v2', 'convnext_small'):
+	# for model_name in ('fcnet', 'scvnet', 'resnet50', 'densenet121', 'mobilenet_v2', 'convnext_small'):
+	for model_name in ('scvnet',):
 		print(f'Benchmarks for {model_name} begin')
 
 		model, train_dl, test_dl, loss_func = env_builder(model_name)
@@ -101,6 +105,6 @@ if __name__ == '__main__':
 		telemetry['loss'].append(loss)
 		telemetry['acc'].append(accuracy)
 		telemetry['times'].append(start.elapsed_time(end))
-		pd.DataFrame(telemetry).to_csv(f'../results/{results_filename}', index=False)
+		pd.DataFrame(telemetry).to_csv(f'../results/pytorch_results.csv', index=False)
 
 		del model
