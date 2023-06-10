@@ -1,5 +1,9 @@
 #!/bin/bash
-cd ./python
+cd c++ 
+make clean && make
+./train.out fcnet
+./train.out scvnet
+cd ../python
 python torch_benchmarks.py 
 python tf_benchmarks.py
 cd ..

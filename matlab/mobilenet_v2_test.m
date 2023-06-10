@@ -76,6 +76,6 @@ inference_time = timeit(@() classify(net, x_test, MiniBatchSize=batch_size*2));
 outputs = classify(net, x_test, MiniBatchSize=batch_size*2);
 test_acc = mean(outputs == y_test);
 
-fhand = fopen("../results/matlab-fcnet.csv", "a+");
+fhand = fopen("../results/matlab-mobilenet-v2.csv", "a+");
 fprintf(fhand, "1,1,%f,,,,,,%f,,inference", inference_time,test_acc);
 fclose(fhand);
