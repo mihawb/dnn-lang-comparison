@@ -1,7 +1,7 @@
 import pandas as pd
 
 def preprocess_matlab(filepath: str):
-	mname = filepath[filepath.index('_')+1:filepath.index('.')]
+	mname = filepath[filepath.index('_')+1:filepath.index('.', 3)]
 	matlab = pd.read_csv(filepath, usecols=('Epoch', 'TimeSinceStart', 'TrainingLoss', 'ValidationAccuracy', 'State'))
 	matlab = matlab.rename(columns=dict(zip(matlab.columns, ['eps','times','loss','acc','type'])))
 
