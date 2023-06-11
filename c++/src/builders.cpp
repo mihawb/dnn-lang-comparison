@@ -12,9 +12,9 @@ void cudl::FullyConnectedNetBuilder(Network &model) {
 }
 
 void cudl::SimpleConvNetBuilder(Network &model) {
-		model.add_layer(new Conv2D("conv1", 20, 5));
+		model.add_layer(new Conv2D("conv1", 16, 5));
 		model.add_layer(new Pooling("pool", 2, 0, 2, CUDNN_POOLING_MAX));
-		model.add_layer(new Conv2D("conv2", 50, 5));
+		model.add_layer(new Conv2D("conv2", 32, 5));
 		model.add_layer(new Pooling("pool", 2, 0, 2, CUDNN_POOLING_MAX));
 		model.add_layer(new Dense("dense1", 500));
 		model.add_layer(new Activation("relu", CUDNN_ACTIVATION_RELU));
