@@ -9,3 +9,4 @@ datasets/mnist-digits/*
 .vscode
 cpp_old/
 python/*_test.ipynb
+*.png

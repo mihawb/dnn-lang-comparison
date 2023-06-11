@@ -11,7 +11,7 @@ def preprocess_matlab(filepath: str):
 	matlab.loss = matlab.loss.fillna(-1)
 	matlab = matlab.dropna(axis=0)
 
-	matlab.insert(0, 'framework', 'matlab')
+	matlab.insert(0, 'framework', 'MATLAB')
 	matlab.insert(1, 'mnames', mname)
 
 	matlab.times *= 1e3
@@ -22,21 +22,24 @@ def preprocess_matlab(filepath: str):
 
 	return matlab
 
-cudnn_fcnet = pd.read_csv('cpp_fcnet.csv')
-cudnn_fcnet.insert(0, 'framework', 'cudnn')
+cudnn_fcnet = pd.read_csv('../results/cpp_fcnet.csv')
+cudnn_fcnet.insert(0, 'framework', 'cuDNN')
+cudnn_fcnet.acc /= 100
 
-cudnn_scvnet = pd.read_csv('cpp_scvnet.csv')
-cudnn_scvnet.insert(0, 'framework', 'cudnn')
+cudnn_scvnet = pd.read_csv('../results/cpp_scvnet.csv')
+cudnn_scvnet.insert(0, 'framework', 'cuDNN')
+cudnn_scvnet.acc /= 100
 
-matlab_fcnet = preprocess_matlab('matlab_fcnet.csv')
-matlab_mobilenet = preprocess_matlab('matlab_mobilenet_v2.csv')
+matlab_fcnet = preprocess_matlab('../results/matlab_fcnet.csv')
+matlab_mobilenet = preprocess_matlab('../results/matlab_mobilenet_v2.csv')
 
-pytorch = pd.read_csv('pytorch_results.csv')
-pytorch.insert(0, 'framework', 'pytorch')
+pytorch = pd.read_csv('../results/pytorch_results.csv')
+pytorch.insert(0, 'framework', 'PyTorch')
 
-tensorflow = pd.read_csv('tensorflow_results.csv')
-tensorflow.insert(0, 'framework', 'tensorflow')
+tensorflow = pd.read_csv('../results/tensorflow_results.csv')
+tensorflow.insert(0, 'framework', 'TensorFlow')
 tensorflow.times /= 1e6
 
 results_concat = pd.concat((cudnn_fcnet, cudnn_scvnet, matlab_fcnet, matlab_mobilenet, pytorch, tensorflow), axis=0)
+results_concat = results_concat.rename(columns={'mnames': 'model_name', 'eps': 'epochs', 'acc': 'accuracy', 'times': 'exec_time'})
 results_concat.to_csv('results_concat.csv', index=False)
