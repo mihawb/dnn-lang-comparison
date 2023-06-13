@@ -124,8 +124,7 @@ if __name__ == '__main__':
 		'loss_func': tf.keras.losses.SparseCategoricalCrossentropy(from_logits=False)
 	}
 		
-	# for model_name in ('fcnet', 'scvnet', 'resnet50', 'densenet121', 'mobilenet_v2', 'convnext_small'):
-	for model_name in ('scvnet',):
+	for model_name in ('fcnet', 'scvnet', 'resnet50', 'densenet121', 'mobilenet_v2', 'convnext_small'):
 		p = mp.Process(target=train_single_model, args=(model_name, config, telemetry, child_conn))
 		p.start()
 		telemetry = parent_conn.recv()

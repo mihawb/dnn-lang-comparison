@@ -69,8 +69,7 @@ telemetry = {
 
 
 if __name__ == '__main__':
-	# for model_name in ('fcnet', 'scvnet', 'resnet50', 'densenet121', 'mobilenet_v2', 'convnext_small'):
-	for model_name in ('scvnet',):
+	for model_name in ('fcnet', 'scvnet', 'resnet50', 'densenet121', 'mobilenet_v2', 'convnext_small'):
 		print(f'Benchmarks for {model_name} begin')
 
 		model, train_dl, test_dl, loss_func = env_builder(model_name)
