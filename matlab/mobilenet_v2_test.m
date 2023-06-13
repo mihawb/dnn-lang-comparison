@@ -20,9 +20,8 @@ verbose_freq = floor(val_freq / 4);
 % verbose output requires inference which severly slows down learning process
 
 
-% train_ds = augmentedImageDatastore([224 224 3], x_train, y_train);
-% test_ds = augmentedImageDatastore([224 224 3], x_test, y_test);
-% and again, input size workaround deemed augImgDs unnecessary
+% train_ds = augmentedImageDatastore([32 32 3], x_train, y_train);
+% test_ds = augmentedImageDatastore([32 32 3], x_test, y_test);
 train_ds = {x_train, y_train};
 test_ds = {x_test, y_test};
 
