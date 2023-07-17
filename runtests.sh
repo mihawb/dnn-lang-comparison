@@ -1,5 +1,5 @@
 #!/bin/bash
-./datasets/mnist-digits/download_mnist.sh
+bash ./datasets/mnist-digits/download_mnist.sh
 cd c++ 
 make clean && make
 ./train.out fcnet
