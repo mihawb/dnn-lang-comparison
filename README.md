@@ -22,7 +22,7 @@ All benchmarks were run on GTX 1050 with CUDA 11.8 with drives suitable for Ubun
 * Matlab (R2023a)
 
 ## Results
-Refer to chapters 5 and 6 in the report.  
+Refer to chapters 5 and 6 in the [final report](https://github.com/mihawb/dnn-lang-comparison/blob/main/analysis/final_report.pdf).  
 Attaching some plots below as they draw attention.  
 ![training](https://github.com/mihawb/dnn-lang-comparison/assets/46073943/3623ba86-784f-4a83-b725-2b57db24b2d0)
 ![inference](https://github.com/mihawb/dnn-lang-comparison/assets/46073943/7265f291-598e-4cbc-9734-69b78ef1d71d)
