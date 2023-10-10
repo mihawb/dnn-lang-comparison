@@ -18,10 +18,7 @@ start = torch.cuda.Event(enable_timing=True)
 end = torch.cuda.Event(enable_timing=True)
 
 use_cuda = torch.cuda.is_available()
-device = torch.device("cuda"
-                      if use_cuda
-											else "cpu"
-										)
+device = torch.device("cuda" if use_cuda else "cpu")
 print(f'CUDA enabled: {use_cuda}')
 
 

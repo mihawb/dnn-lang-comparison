@@ -11,3 +11,4 @@ cpp_old/
 python/*_test.ipynb
 *.png
 */build/
+*.pt
