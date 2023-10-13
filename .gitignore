@@ -1,4 +1,5 @@
 */__pycache__
+.ipynb_checkpoints
 datasets/cifar-10-py/*
 datasets/cifar-10-matlab/*
 datasets/mnist-digits/*
