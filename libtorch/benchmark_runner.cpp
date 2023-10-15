@@ -7,13 +7,15 @@
 #include <iostream>
 #include <fstream>
 
-#include "src/models.h"
+#include "models.h"
 
 int main()
 {
+    torch::Device device(torch::kCPU);
     if (torch::cuda::is_available())
     {
-        std::cout << "CUDA is available!" << std::endl;
+        std::cout << "CUDA is available! Training on GPU." << std::endl;
+        device = torch::kCUDA;
     }
     else
     {
@@ -26,19 +28,21 @@ int main()
     results_file << "mnames,type,eps,loss,acc,times" << std::endl;
 
     // new net via reference semantics
-    auto net = std::make_shared<FullyConnectedNet>();
+    auto model = std::make_shared<SimpleConvNet>();
+    model->to(device);
 
-    // multi-threaded data loader for the MNIST dataset
+    // multi-threaded data loader for the MNIST dataset of size [batch_size, 1, 28, 28]
     auto data_loader = torch::data::make_data_loader(
         torch::data::datasets::MNIST("../datasets/mnist-digits").map(torch::data::transforms::Stack<>()),
         /*batch_size=*/32);
 
-    torch::optim::SGD optimizer(net->parameters(), /*lr=*/0.01);
+    torch::optim::SGD optimizer(model->parameters(), /*lr=*/0.01);
 
     cudaEvent_t start, stop;
     cudaEventCreate(&start);
     cudaEventCreate(&stop);
     float milliseconds = 0;
+    float lr = 0.01;
 
     for (size_t epoch = 1; epoch <= 15; ++epoch)
     {
@@ -47,10 +51,16 @@ int main()
 
         for (auto &batch : *data_loader)
         {
+            // std::cout << batch.data.sizes() << std::endl;
+            // std::cout << batch.target.sizes() << std::endl;
+            
+            torch::Tensor batch_data = batch.data.to(device);
+            torch::Tensor batch_target = batch.target.to(device);
+
             optimizer.zero_grad();
 
-            torch::Tensor prediction = net->forward(batch.data);
-            torch::Tensor loss = torch::nll_loss(prediction, batch.target);
+            torch::Tensor prediction = model->forward(batch_data);
+            torch::Tensor loss = torch::nll_loss(prediction, batch_target);
             loss.backward();
             optimizer.step();
 
