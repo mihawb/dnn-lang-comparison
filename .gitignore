@@ -10,6 +10,9 @@ datasets/mnist-digits/*
 !datasets/cifar-10-binary/download_cifar10_bin.sh
 !datasets/*/.gitkeep
 
+libtorch/libtorch-pre-cxx11
+libtorch/libtorch-cxx11
+
 *.o
 *.out
 */build/
