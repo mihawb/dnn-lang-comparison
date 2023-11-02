@@ -118,7 +118,7 @@ def inception_fit(model, device, loader, loss_func, epoch, optimizer, log_interv
 
 
 def get_mnist_loaders(batch_size, test_batch_size=None, cutoff=1, flatten=True):
-	if not test_batch_size: test_batch_size = batch_size * 2
+	if test_batch_size is None: test_batch_size = batch_size * 2
 
 	x_train, y_train = load_mnist_imgs_and_labels(
 		'../datasets/mnist-digits/train-images-idx3-ubyte',
@@ -156,7 +156,7 @@ def get_mnist_loaders(batch_size, test_batch_size=None, cutoff=1, flatten=True):
 
 
 def get_cifar10_loaders(batch_size, test_batch_size=None, image_size=32):
-	if not test_batch_size: test_batch_size = batch_size * 2
+	if test_batch_size is None: test_batch_size = batch_size * 2
 
 	transform = torchvision.transforms.Compose([
 		torchvision.transforms.Resize(image_size),
