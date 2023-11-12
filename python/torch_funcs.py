@@ -1,6 +1,7 @@
 from load_datasets import load_mnist_imgs_and_labels
 
 import numpy as np
+import matplotlib.pyplot as plt
 
 import torch
 import torch.nn as nn
@@ -115,6 +116,21 @@ def fit_dcgan(generator, discriminator, device, loader, loss_func, epoch, optimi
 	return history
 
 
+def generate(generator, device, epoch, test_batch_size=64, latent_vec_size=100, latent_vecs_batch=None, save=False):
+	# batch size not smaller than 64
+	if latent_vecs_batch is None:
+		latent_vecs_batch = torch.randn(test_batch_size, latent_vec_size, 1, 1, device=device)
+
+	with torch.nograd():
+		res_imgs = generator(latent_vecs_batch).detach().cpu()
+
+	if save:
+		plt.imsave(
+			f'dcgan_results_{epoch}.png',
+			np.transpose(torchvision.utils.make_grid(res_imgs, padding=5, normalize=True).cpu(),(1,2,0))
+		)
+
+
 def test(model, device, loader, loss_func, silent=False) -> tuple[float, float]:
 	'''
 	Test model's performance on validation or test data.
@@ -141,6 +157,23 @@ def test(model, device, loader, loss_func, silent=False) -> tuple[float, float]:
 		))
 
 	return test_loss, correct_pred / len(loader.dataset)
+
+
+def generate(generator, device, epoch, test_batch_size=64, latent_vec_size=100, latent_vecs_batch=None, save=False):
+	# batch size not smaller than 64
+	if latent_vecs_batch is None:
+		latent_vecs_batch = torch.randn(test_batch_size, latent_vec_size, 1, 1, device=device)
+
+	with torch.no_grad():
+		res_imgs = generator(latent_vecs_batch).detach().cpu()
+
+	if save:
+		plt.imsave(
+			f'dcgan_results_{epoch}.png',
+			np.transpose(torchvision.utils.make_grid(res_imgs[:64], padding=5, normalize=True).cpu().numpy(),(1,2,0))
+		)
+
+	return res_imgs
 
 
 def inception_fit(model, device, loader, loss_func, epoch, optimizer, log_interval=100, silent=False):

@@ -3,7 +3,7 @@ import torch.nn.functional as F
 import torch.nn as nn
 from torchvision.models import resnet50, densenet121, mobilenet_v2, convnext_small
 import torch.optim as optim
-from torch_funcs import fit, test, get_cifar10_loaders, get_mnist_loaders, get_celeba_loader, FullyConnectedNet, SimpleConvNet, fit_dcgan, Generator, Discriminator
+from torch_funcs import fit, test, get_cifar10_loaders, get_mnist_loaders, get_celeba_loader, FullyConnectedNet, SimpleConvNet, fit_dcgan, Generator, Discriminator, dcgan_weights_init, generate
 import pandas as pd
 import numpy as np
 
@@ -112,6 +112,8 @@ if __name__ == '__main__':
 
 	netG = Generator(nc, nz, ngf).to(device)
 	netD = Discriminator(nc, ndf).to(device)
+	netG.apply(dcgan_weights_init)
+	netD.apply(dcgan_weights_init)
 
 	celeba_dl = get_celeba_loader(batch_size=batch_size)
 
@@ -136,3 +138,17 @@ if __name__ == '__main__':
 		telemetry['performance'].append(f'{gan_hist["D_x"]}|{gan_hist["D_G_z1"]}|{gan_hist["D_G_z2"]}')
 		telemetry['elapsed_time'].append(start.elapsed_time(end))
 		pd.DataFrame(telemetry).to_csv(f'../results/pytorch_results.csv', index=False)
+
+	# generation
+	start.record()
+	_ = generate(netG, device, 1, test_batch_size=test_batch_size)
+	end.record()
+	torch.cuda.synchronize()
+
+	telemetry['model_name'].append('DCGAN')
+	telemetry['type'].append('generation')
+	telemetry['epoch'].append(1)
+	telemetry['loss'].append(-1)
+	telemetry['performance'].append(-1)
+	telemetry['elapsed_time'].append(start.elapsed_time(end))
+	pd.DataFrame(telemetry).to_csv(f'../results/pytorch_results.csv', index=False)
