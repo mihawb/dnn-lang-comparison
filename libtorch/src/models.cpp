@@ -103,7 +103,7 @@ Bottleneck::Bottleneck(
 		// 1x1
 		torch::nn::Sequential conv2_1x1_unreg{
 			torch::nn::Conv2d(
-				torch::nn::Conv2dOptions(in_channels, intermediate_channels * expansion, 1)
+				torch::nn::Conv2dOptions(intermediate_channels, intermediate_channels * expansion, 1)
 				.stride(1).padding(0).bias(false)
 			),
 			torch::nn::BatchNorm2d(intermediate_channels * expansion)
@@ -156,7 +156,74 @@ torch::Tensor Bottleneck::forward(torch::Tensor x) {
 		x += projection->forward(in_x);
 	}
 
-	return torch::nn::ReLU()->forward(x);
+	x = torch::nn::ReLU()->forward(x);
+	return x;
+}
+
+ResNet50::ResNet50(int num_classes) {
+	// ResNet-50 parameters as specified in the white paper
+	int channels_list[] = {64, 128, 256, 512};
+    int repeatition_list[] = {3, 4, 6, 3};
+    int expansion = 4;
+    int is_bottleneck = true;
+
+	torch::nn::Sequential process_input_unreg{
+		torch::nn::Conv2d(torch::nn::Conv2dOptions(3, 64, 7).stride(2).padding(3).bias(false)),
+		torch::nn::BatchNorm2d(64),
+		torch::nn::ReLU(),
+		torch::nn::MaxPool2d(torch::nn::MaxPool2dOptions(3).stride(2).padding(1))
+	};
+	this->process_input = register_module("process_input", process_input_unreg);
+
+	torch::nn::Sequential block1_unreg{
+		Bottleneck(64, channels_list[0], expansion, is_bottleneck, 1),
+		Bottleneck(channels_list[0] * expansion, channels_list[0], expansion, is_bottleneck, 1),
+		Bottleneck(channels_list[0] * expansion, channels_list[0], expansion, is_bottleneck, 1)
+	};
+	this->block1 = register_module("block1", block1_unreg);
+
+	torch::nn::Sequential block2_unreg{
+		Bottleneck(channels_list[0] * expansion, channels_list[1], expansion, is_bottleneck, 2),
+		Bottleneck(channels_list[1] * expansion, channels_list[1], expansion, is_bottleneck, 1),
+		Bottleneck(channels_list[1] * expansion, channels_list[1], expansion, is_bottleneck, 1),
+		Bottleneck(channels_list[1] * expansion, channels_list[1], expansion, is_bottleneck, 1)
+	};
+	this->block2 = register_module("block2", block2_unreg);
+
+	torch::nn::Sequential block3_unreg{
+		Bottleneck(channels_list[1] * expansion, channels_list[2], expansion, is_bottleneck, 2),
+		Bottleneck(channels_list[2] * expansion, channels_list[2], expansion, is_bottleneck, 1),
+		Bottleneck(channels_list[2] * expansion, channels_list[2], expansion, is_bottleneck, 1),
+		Bottleneck(channels_list[2] * expansion, channels_list[2], expansion, is_bottleneck, 1),
+		Bottleneck(channels_list[2] * expansion, channels_list[2], expansion, is_bottleneck, 1),
+		Bottleneck(channels_list[2] * expansion, channels_list[2], expansion, is_bottleneck, 1)
+	};
+	this->block3 = register_module("block3", block3_unreg);
+
+	torch::nn::Sequential block4_unreg{
+		Bottleneck(channels_list[2] * expansion, channels_list[3], expansion, is_bottleneck, 2),
+		Bottleneck(channels_list[3] * expansion, channels_list[3], expansion, is_bottleneck, 1),
+		Bottleneck(channels_list[3] * expansion, channels_list[3], expansion, is_bottleneck, 1)
+	};
+	this->block4 = register_module("block4", block4_unreg);
+
+	this->average_pool = register_module("average_pool",
+		torch::nn::AdaptiveAvgPool2d(torch::nn::AdaptiveAvgPool2dOptions(1))
+	);
+
+	this->fc1 = register_module("fc1",torch::nn::Linear(channels_list[3] * expansion, num_classes));
+}
+
+torch::Tensor ResNet50::forward(torch::Tensor x) {
+	x = process_input->forward(x);
+	x = block1->forward(x);
+	x = block2->forward(x);
+	x = block3->forward(x);
+	x = block4->forward(x);
+	x = average_pool->forward(x);
+	x = torch::flatten(x, 1);
+	x = fc1->forward(x);
+	return x;
 }
 
 // std::shared_ptr<torch::nn::Module> model_factory(std::string model_name)

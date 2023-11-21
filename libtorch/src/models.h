@@ -48,6 +48,22 @@ struct Bottleneck : torch::nn::Module
         conv2_3x3{nullptr};
 };
 
+struct ResNet50 : torch::nn::Module
+{
+    ResNet50(int num_classes = 10);
+
+    torch::Tensor forward(torch::Tensor x);
+
+    torch::nn::Sequential
+        process_input{nullptr},
+        block1{nullptr},
+        block2{nullptr},
+        block3{nullptr},
+        block4{nullptr};
+    torch::nn::AdaptiveAvgPool2d average_pool{nullptr};
+    torch::nn::Linear fc1{nullptr};
+};
+
 // std::shared_ptr<torch::nn::Module> model_factory(std::string model_name);
 
 #endif // _MODELS_H_
