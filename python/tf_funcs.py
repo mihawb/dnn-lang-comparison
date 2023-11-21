@@ -138,3 +138,58 @@ def SimpleConvNetBuilder(num_classes=10):
 		tf.keras.layers.Dense(num_classes, activation='softmax'),
 	]
 	return tf.keras.Sequential(layers)
+
+
+def GeneratorBuilder(latent_vec_size, feat_map_size):
+	gen = tf.keras.Sequential()
+	gen.add(tf.keras.layers.Dense(4*4*feat_map_size*8, use_bias=False, input_shape=(latent_vec_size,)))
+	gen.add(tf.keras.layers.ReLU())
+	gen.add(tf.keras.layers.Reshape((4,4,feat_map_size*8)))
+	assert gen.output_shape == (None, 4,4,feat_map_size*8)
+
+	gen.add(tf.keras.layers.Conv2DTranspose(feat_map_size * 8, (4,4), (1,1), padding="same", use_bias=False))
+	gen.add(tf.keras.layers.BatchNormalization())
+	gen.add(tf.keras.layers.ReLU())
+	assert gen.output_shape == (None, 4, 4, feat_map_size * 8)
+
+	gen.add(tf.keras.layers.Conv2DTranspose(feat_map_size * 4, (4,4), (2,2), padding="same", use_bias=False))
+	gen.add(tf.keras.layers.BatchNormalization())
+	gen.add(tf.keras.layers.ReLU())
+	assert gen.output_shape == (None, 8, 8, feat_map_size * 4)
+
+	gen.add(tf.keras.layers.Conv2DTranspose(feat_map_size * 2, (4,4), (2,2), padding="same", use_bias=False))
+	gen.add(tf.keras.layers.BatchNormalization())
+	gen.add(tf.keras.layers.ReLU())
+	assert gen.output_shape == (None, 16, 16, feat_map_size * 2)
+
+	gen.add(tf.keras.layers.Conv2DTranspose(feat_map_size, (4,4), (2,2), padding="same", use_bias=False))
+	gen.add(tf.keras.layers.BatchNormalization())
+	gen.add(tf.keras.layers.ReLU())
+	assert gen.output_shape == (None, 32, 32, feat_map_size)
+
+	gen.add(tf.keras.layers.Conv2DTranspose(3, (4,4), (2,2), padding="same", use_bias=False, activation='tanh'))
+	assert gen.output_shape == (None, 64, 64, 3)
+
+	return gen
+
+
+def DiscriminatorBulider(feat_map_size):
+	disc = tf.keras.Sequential()
+
+	disc.add(tf.keras.layers.Conv2D(feat_map_size, (4,4), (2,2), padding="same", use_bias=False, input_shape=[64,64,3]))
+	disc.add(tf.keras.layers.LeakyReLU(0.2))
+
+	disc.add(tf.keras.layers.Conv2D(feat_map_size * 2, (4,4), (2,2), padding="same", use_bias=False))
+	disc.add(tf.keras.layers.BatchNormalization())
+	disc.add(tf.keras.layers.LeakyReLU(0.2))
+
+	disc.add(tf.keras.layers.Conv2D(feat_map_size * 4, (4,4), (2,2), padding="same", use_bias=False))
+	disc.add(tf.keras.layers.BatchNormalization())
+	disc.add(tf.keras.layers.LeakyReLU(0.2))
+
+	disc.add(tf.keras.layers.Conv2D(feat_map_size * 8, (4,4), (2,2), padding="same", use_bias=False, activation="sigmoid"))
+	disc.add(tf.keras.layers.Flatten())
+	disc.add(tf.keras.layers.Dense(1))
+
+	return disc
+
