@@ -1,6 +1,7 @@
 import tensorflow as tf
 from load_datasets import load_mnist_imgs_and_labels
 from time import perf_counter_ns
+import pathlib
 
 
 def get_cifar10_data(preprocess=None):
@@ -39,6 +40,16 @@ def get_mnist_loaders(batch_size, test_batch_size=None, flatten=True):
 	test_ds = test_ds.batch(test_batch_size)
 
 	return train_ds, test_ds
+
+
+def get_celeba_loader(batch_size, image_size=64):
+    return tf.keras.utils.image_dataset_from_directory(
+        pathlib.Path('../datasets/celeba'),
+        label_mode=None,
+        seed=123,
+        image_size=(image_size, image_size),
+        batch_size=batch_size
+	)
 
 
 def classifier_overlay(inputs):
@@ -140,7 +151,7 @@ def SimpleConvNetBuilder(num_classes=10):
 	return tf.keras.Sequential(layers)
 
 
-def GeneratorBuilder(latent_vec_size, feat_map_size):
+def GeneratorBuilder(latent_vec_size=100, feat_map_size=64):
 	gen = tf.keras.Sequential()
 	gen.add(tf.keras.layers.Dense(4*4*feat_map_size*8, use_bias=False, input_shape=(latent_vec_size,)))
 	gen.add(tf.keras.layers.ReLU())
@@ -173,7 +184,7 @@ def GeneratorBuilder(latent_vec_size, feat_map_size):
 	return gen
 
 
-def DiscriminatorBulider(feat_map_size):
+def DiscriminatorBulider(feat_map_size=64):
 	disc = tf.keras.Sequential()
 
 	disc.add(tf.keras.layers.Conv2D(feat_map_size, (4,4), (2,2), padding="same", use_bias=False, input_shape=[64,64,3]))
@@ -193,3 +204,35 @@ def DiscriminatorBulider(feat_map_size):
 
 	return disc
 
+
+# This annotation causes the function to be "compiled".
+@tf.function
+def train_step(modelG, modelD, optG, optD, imgs_batch, loss_func, latent_vec_size=100):
+	noise = tf.random.normal([imgs_batch.shape[0], latent_vec_size])
+
+	with tf.GradientTape() as gen_tape, tf.GradientTape() as disc_tape:
+		generated_images = modelG(noise, training=True)
+
+		real_output = modelD(imgs_batch, training=True)
+		fake_output = modelD(generated_images, training=True)
+		D_x = tf.reduce_mean(real_output)
+		D_G_z1 = tf.reduce_mean(fake_output)
+
+		# generator loss
+		gen_loss = loss_func(tf.ones_like(fake_output), fake_output)
+
+		# discrimanator loss
+		real_loss = loss_func(tf.ones_like(real_output), real_output)
+		fake_loss = loss_func(tf.zeros_like(fake_output), fake_output)
+		disc_loss = real_loss + fake_loss
+
+	gradients_of_generator = gen_tape.gradient(gen_loss, modelG.trainable_variables)
+	gradients_of_discriminator = disc_tape.gradient(disc_loss, modelD.trainable_variables)
+
+	optG.apply_gradients(zip(gradients_of_generator, modelG.trainable_variables))
+	optD.apply_gradients(zip(gradients_of_discriminator, modelD.trainable_variables))
+
+	fake_output_graded = modelD(generated_images)
+	D_G_z2 = tf.reduce_mean(fake_output_graded)
+
+	return gen_loss, disc_loss, D_x, D_G_z1, D_G_z2
