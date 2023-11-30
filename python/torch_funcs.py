@@ -109,9 +109,9 @@ def fit_dcgan(generator, discriminator, device, loader, loss_func, epoch, optimi
 			running_D_x, running_D_G_z1, running_D_G_z2 = 0.0, 0.0, 0.0 
 
 			if not silent:
-				print('[%d][%d/%d]\tLoss_D: %.4f\tLoss_G: %.4f\tD(x): %.4f\tD(G(z)): %.4f / %.4f'
+				print('[%d][%d/%d]\tLoss_G: %.4f\tLoss_D: %.4f\tD(x): %.4f\tD(G(z)): %.4f / %.4f'
 					  % (epoch, batch_idx, len(loader),
-						 errD.item(), errG.item(), D_x, D_G_z1, D_G_z2))
+						 errG.item(), errD.item(), D_x, D_G_z1, D_G_z2))
 				
 	return history
 
@@ -126,7 +126,7 @@ def generate(generator, device, epoch, test_batch_size=64, latent_vec_size=100, 
 
 	if save:
 		plt.imsave(
-			f'dcgan_results_{epoch}.png',
+			f'../results/pytorch_dcgan_results_{epoch}.png',
 			np.transpose(torchvision.utils.make_grid(res_imgs, padding=5, normalize=True).cpu(),(1,2,0))
 		)
 
@@ -157,23 +157,6 @@ def test(model, device, loader, loss_func, silent=False) -> tuple[float, float]:
 		))
 
 	return test_loss, correct_pred / len(loader.dataset)
-
-
-def generate(generator, device, epoch, test_batch_size=64, latent_vec_size=100, latent_vecs_batch=None, save=False):
-	# batch size not smaller than 64
-	if latent_vecs_batch is None:
-		latent_vecs_batch = torch.randn(test_batch_size, latent_vec_size, 1, 1, device=device)
-
-	with torch.no_grad():
-		res_imgs = generator(latent_vecs_batch).detach().cpu()
-
-	if save:
-		plt.imsave(
-			f'dcgan_results_{epoch}.png',
-			np.transpose(torchvision.utils.make_grid(res_imgs[:64], padding=5, normalize=True).cpu().numpy(),(1,2,0))
-		)
-
-	return res_imgs
 
 
 def inception_fit(model, device, loader, loss_func, epoch, optimizer, log_interval=100, silent=False):
@@ -330,7 +313,7 @@ class SimpleConvNet(nn.Module):
 			nn.MaxPool2d(2),  
 		)
 		self.dense = nn.Linear(32 * 7 * 7, 500, dtype=torch.float64)
-		self.classifier = nn.Linear(500, num_classes, dtype=torch.float64) 
+		self.classifier = nn.Linear(500, num_classes, dtype=torch.float64)
 
 	def forward(self, x):
 		x = self.conv1(x)

@@ -6,19 +6,16 @@ import torch.optim as optim
 from torch_funcs import fit, test, get_cifar10_loaders, get_mnist_loaders, get_celeba_loader, FullyConnectedNet, SimpleConvNet, fit_dcgan, Generator, Discriminator, dcgan_weights_init, generate
 import pandas as pd
 import numpy as np
+import time
 
 
 batch_size = 96
 test_batch_size = 128
-epochs = 15
+epochs = 8
 lr = 1e-2
 momentum = 0.9
 num_classes = 10
-log_interval = 200
-nc = 3
-nz = 100
-ngf = 64
-ndf = 64
+log_interval = 50
 start = torch.cuda.Event(enable_timing=True)
 end = torch.cuda.Event(enable_timing=True)
 
@@ -110,6 +107,12 @@ if __name__ == '__main__':
 
 		del model
 
+	nc = 3
+	nz = 100
+	ngf = 64
+	ndf = 64
+	lr = 1e-4
+
 	netG = Generator(nc, nz, ngf).to(device)
 	netD = Discriminator(nc, ndf).to(device)
 	netG.apply(dcgan_weights_init)
@@ -123,32 +126,30 @@ if __name__ == '__main__':
 
 	print('Benchmarks for DCGAN begin')
 	for epoch in range(1, epochs + 1):
-		start.record()
+		start = time.perf_counter_ns()
 		gan_hist = fit_dcgan(netG, netD, device, celeba_dl, loss_func, epoch, optimizerG, optimizerD, nz, log_interval=log_interval)
-		end.record()
-		torch.cuda.synchronize()
+		end = time.perf_counter_ns()
 
 		for stat in gan_hist:
-			gan_hist[stat] = np.sum(gan_hist[stat]) / len(gan_hist[stat])
+			gan_hist[stat] = np.mean(gan_hist[stat])
 
 		telemetry['model_name'].append('DCGAN')
 		telemetry['type'].append('training')
 		telemetry['epoch'].append(epoch)
 		telemetry['loss'].append(f'{gan_hist["loss_G"]}|{gan_hist["loss_D"]}')
 		telemetry['performance'].append(f'{gan_hist["D_x"]}|{gan_hist["D_G_z1"]}|{gan_hist["D_G_z2"]}')
-		telemetry['elapsed_time'].append(start.elapsed_time(end))
+		telemetry['elapsed_time'].append(end - start)
 		pd.DataFrame(telemetry).to_csv(f'../results/pytorch_results.csv', index=False)
 
 	# generation
-	start.record()
-	_ = generate(netG, device, 1, test_batch_size=test_batch_size)
-	end.record()
-	torch.cuda.synchronize()
+	start = time.perf_counter_ns()
+	_ = generate(netG, device, 1, test_batch_size=test_batch_size, save=True)
+	end = time.perf_counter_ns()
 
 	telemetry['model_name'].append('DCGAN')
 	telemetry['type'].append('generation')
 	telemetry['epoch'].append(1)
 	telemetry['loss'].append(-1)
 	telemetry['performance'].append(-1)
-	telemetry['elapsed_time'].append(start.elapsed_time(end))
+	telemetry['elapsed_time'].append(end - start)
 	pd.DataFrame(telemetry).to_csv(f'../results/pytorch_results.csv', index=False)
