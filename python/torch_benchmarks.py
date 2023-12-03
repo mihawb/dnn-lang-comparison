@@ -9,22 +9,7 @@ import numpy as np
 import time
 
 
-batch_size = 96
-test_batch_size = 128
-epochs = 8
-lr = 1e-2
-momentum = 0.9
-num_classes = 10
-log_interval = 50
-start = torch.cuda.Event(enable_timing=True)
-end = torch.cuda.Event(enable_timing=True)
-
-use_cuda = torch.cuda.is_available()
-device = torch.device("cuda" if use_cuda else "cpu")
-print(f'CUDA enabled: {use_cuda}')
-
-
-def env_builder(name: str): 
+def env_builder(name: str, num_classes: int, batch_size: int, test_batch_size: int): 
 	if name == 'FullyConnectedNet':
 		model = FullyConnectedNet()
 	elif name == 'SimpleConvNet':
@@ -57,21 +42,35 @@ def env_builder(name: str):
 	return model, train_dl, test_dl, loss_func
 
 
-telemetry = {
-	'model_name': [],
-	'type':[],
-	'epoch': [],
-	'loss': [],
-	'performance': [],
-	'elapsed_time': []
-}
-
-
 if __name__ == '__main__':
+	telemetry = {
+		'model_name': [],
+		'type':[],
+		'epoch': [],
+		'loss': [],
+		'performance': [],
+		'elapsed_time': []
+	}
+
+	batch_size = 96
+	test_batch_size = 128
+	epochs = 8
+	lr = 1e-2
+	momentum = 0.9
+	num_classes = 10
+	log_interval = 200
+	start = torch.cuda.Event(enable_timing=True)
+	end = torch.cuda.Event(enable_timing=True)
+	results_filepath = f'../results/pytorch_results.csv'
+
+	use_cuda = torch.cuda.is_available()
+	device = torch.device("cuda" if use_cuda else "cpu")
+	print(f'CUDA enabled: {use_cuda}')
+
 	for model_name in ['FullyConnectedNet', 'SimpleConvNet', 'ResNet-50', 'DenseNet-121', 'MobileNet-v2', 'ConvNeXt-Small']:
 		print(f'Benchmarks for {model_name} begin')
 
-		model, train_dl, test_dl, loss_func = env_builder(model_name)
+		model, train_dl, test_dl, loss_func = env_builder(model_name, num_classes, batch_size, test_batch_size)
 		model = model.to(device)
 		opt = optim.SGD(model.parameters(), lr=lr, momentum=momentum)
 
@@ -103,7 +102,7 @@ if __name__ == '__main__':
 		telemetry['loss'].append(loss)
 		telemetry['performance'].append(accuracy)
 		telemetry['elapsed_time'].append(start.elapsed_time(end))
-		pd.DataFrame(telemetry).to_csv(f'../results/pytorch_results.csv', index=False)
+		pd.DataFrame(telemetry).to_csv(results_filepath, index=False)
 
 		del model
 
@@ -139,7 +138,7 @@ if __name__ == '__main__':
 		telemetry['loss'].append(f'{gan_hist["loss_G"]}|{gan_hist["loss_D"]}')
 		telemetry['performance'].append(f'{gan_hist["D_x"]}|{gan_hist["D_G_z1"]}|{gan_hist["D_G_z2"]}')
 		telemetry['elapsed_time'].append(end - start)
-		pd.DataFrame(telemetry).to_csv(f'../results/pytorch_results.csv', index=False)
+		pd.DataFrame(telemetry).to_csv(results_filepath, index=False)
 
 	# generation
 	start = time.perf_counter_ns()
@@ -152,4 +151,4 @@ if __name__ == '__main__':
 	telemetry['loss'].append(-1)
 	telemetry['performance'].append(-1)
 	telemetry['elapsed_time'].append(end - start)
-	pd.DataFrame(telemetry).to_csv(f'../results/pytorch_results.csv', index=False)
+	pd.DataFrame(telemetry).to_csv(results_filepath, index=False)

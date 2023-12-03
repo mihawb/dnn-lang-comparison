@@ -121,7 +121,7 @@ def generate(generator, device, epoch, test_batch_size=64, latent_vec_size=100, 
 	if latent_vecs_batch is None:
 		latent_vecs_batch = torch.randn(test_batch_size, latent_vec_size, 1, 1, device=device)
 
-	with torch.nograd():
+	with torch.no_grad():
 		res_imgs = generator(latent_vecs_batch).detach().cpu()
 
 	if save:

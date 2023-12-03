@@ -58,7 +58,7 @@ int main()
 
     int batch_size = 96;
     int test_batch_size = 128;
-    int epochs = 15;
+    int epochs = 8;
     float lr = 0.01;
     float momentum = 0.9;
     int num_classes = 10;
@@ -67,7 +67,6 @@ int main()
     cudaEventCreate(&start);
     cudaEventCreate(&stop);
     float milliseconds = 0;
-    
 
     // multi-threaded data loader for the MNIST dataset of size [batch_size, 1, 28, 28]
     auto train_dl_mnist = torch::data::make_data_loader(
@@ -104,7 +103,7 @@ int main()
         double running_loss = 0.0;
         int running_corrects = 0;
         int num_samples = 0;
-        cudaEventRecord(start);
+        cudaEventRecord(start); 
 
         for (auto &batch : *train_dl_mnist)
         {

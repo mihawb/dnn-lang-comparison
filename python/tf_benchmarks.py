@@ -119,7 +119,8 @@ def train_dcgan(config, telemetry, child_conn):
 	running_loss_G, running_loss_D = 0.0, 0.0
 	running_D_x, running_D_G_z1, running_D_G_z2 = 0.0, 0.0, 0.0
 
-	for epoch in range(config['epochs']):
+	for epoch in range(1, config['epochs'] + 1):
+		print('epoch', epoch)
 		history = {
 			'loss_G': [],
 			'loss_D': [],
@@ -144,6 +145,9 @@ def train_dcgan(config, telemetry, child_conn):
 				history['D_G_z1'].append(running_D_G_z1 / config['log_interval'])
 				history['D_G_z2'].append(running_D_G_z2 / config['log_interval'])
 
+				running_loss_G, running_loss_D = 0.0, 0.0
+				running_D_x, running_D_G_z1, running_D_G_z2 = 0.0, 0.0, 0.0 
+
 				if not config['silent']:
 					print('[%d][%d/%d]\tLoss_G: %.4f\tLoss_D: %.4f\tD(x): %.4f\tD(G(z)): %.4f / %.4f'
 					  % (epoch, batch_idx, len(celeba_ds),
@@ -162,25 +166,24 @@ def train_dcgan(config, telemetry, child_conn):
 		telemetry['performance'].append(f'{history["D_x"]}|{history["D_G_z1"]}|{history["D_G_z2"]}')
 		telemetry['elapsed_time'].append(end - start)
 
-		# generation
-		noise = tf.random.normal([config['test_batch_size'], config['latent_vec_size']])
-		start = time.perf_counter_ns()
-		_ = modelG(noise)
-		end = time.perf_counter_ns()
+	# generation
+	noise = tf.random.normal([config['test_batch_size'], config['latent_vec_size']])
+	start = time.perf_counter_ns()
+	_ = modelG(noise)
+	end = time.perf_counter_ns()
 
-		# generation telemetry
-		telemetry['model_name'].append('DCGAN')
-		telemetry['type'].append('generation')
-		telemetry['epoch'].append(1)
-		telemetry['loss'].append(-1)
-		telemetry['performance'].append(-1)
-		telemetry['elapsed_time'].append(end - start)
+	# generation telemetry
+	telemetry['model_name'].append('DCGAN')
+	telemetry['type'].append('generation')
+	telemetry['epoch'].append(1)
+	telemetry['loss'].append(-1)
+	telemetry['performance'].append(-1)
+	telemetry['elapsed_time'].append(end - start)
 
-		child_conn.send(telemetry)
-		pd.DataFrame(telemetry).to_csv(f'../results/tensorflow_results.csv', index=False)
+	child_conn.send(telemetry)
+	pd.DataFrame(telemetry).to_csv(f'../results/tensorflow_results.csv', index=False)
 
-		del modelG, modelD, celeba_ds
-
+	del modelG, modelD, celeba_ds
 
 
 if __name__ == '__main__':
@@ -199,11 +202,15 @@ if __name__ == '__main__':
 	config = {
 		'batch_size': 96,
 		'test_batch_size': 128,
-		'epochs': 15,
+		'epochs': 8,
 		'lr': 1e-4,
 		'momentum': 0.0,
 		'inputs': tf.keras.layers.Input(shape=(32,32,3)),
-		'loss_func': tf.keras.losses.SparseCategoricalCrossentropy(from_logits=False)
+		'loss_func': tf.keras.losses.SparseCategoricalCrossentropy(from_logits=False),
+		'loss_func_GAN': tf.keras.losses.BinaryCrossentropy(from_logits=False),
+		'log_interval': 200,
+		'silent': False,
+		'latent_vec_size': 100
 	}
 		
 	for model_name in ['FullyConnectedNet', 'SimpleConvNet', 'ResNet-50', 'DenseNet-121', 'MobileNet-v2', 'ConvNeXt-Small']:
