@@ -8,19 +8,51 @@
 #include <iostream>
 #include <fstream>
 #include <memory>
+#include <vector>
 
 #include "models.h"
 #include "cifar10.h"
+#include "celeba.h"
 
-int main_for_tests() {
+int main()
+{
+    auto train_dl_celeba = torch::data::make_data_loader(
+        CELEBA{"../datasets/celeba"}.map(torch::data::transforms::Stack<>()),
+        /*batch_size=*/96);
+
+    for (auto &batch : *train_dl_celeba)
+    {
+        std::cout << "celeba batch img sizes: " << batch.data.sizes() << std::endl;
+        std::cout << "celeba batch target(?) sizes: " << batch.target.sizes() << std::endl;
+        break;
+    }
+
+    auto train_dl_cifar10 = torch::data::make_data_loader(
+        CIFAR10{"../datasets/cifar-10-binary/cifar-10-batches-bin", CIFAR10::Mode::kTrain}
+            .map(torch::data::transforms::Stack<>()),
+        /*batch_size=*/96);
+
+    for (auto &batch : *train_dl_cifar10)
+    {
+        std::cout << "cifar10 batch img sizes: " << batch.data.sizes() << std::endl;
+        std::cout << "cifar10 batch target sizes: " << batch.target.sizes() << std::endl;
+        break;
+    }
+
+    return 0;
+}
+
+int main_for_tests()
+{
     // testy xdd
-    torch::Tensor x = torch::randn({1,64,112,112});
-    auto model_to_be_moved = Bottleneck(64,64,4,true,2);
+    torch::Tensor x = torch::randn({1, 64, 112, 112});
+    auto model_to_be_moved = Bottleneck(64, 64, 4, true, 2);
     auto model = std::make_shared<Bottleneck>(model_to_be_moved);
     torch::Tensor out = model->forward(x);
-    std::cout << torch::_shape_as_tensor(out) << std::endl << std::endl;
+    std::cout << torch::_shape_as_tensor(out) << std::endl
+              << std::endl;
 
-    torch::Tensor y = torch::randn({1,3,32,32});
+    torch::Tensor y = torch::randn({1, 3, 32, 32});
     auto resnet_to_be_moved = ResNet50(10);
     auto resnet = std::make_shared<ResNet50>(resnet_to_be_moved);
     torch::Tensor pred = resnet->forward(y);
@@ -29,16 +61,7 @@ int main_for_tests() {
     return 0;
 }
 
-// int main() {
-//     auto resnet_to_be_moved = ResNet50(10);
-//     auto resnet = std::make_shared<ResNet50>(resnet_to_be_moved);
-
-//     resnet->parameters()
-
-//     return 0;
-// }
-
-int main()
+int main_main()
 {
     torch::Device device(torch::kCPU);
     if (torch::cuda::is_available())
@@ -103,7 +126,7 @@ int main()
         double running_loss = 0.0;
         int running_corrects = 0;
         int num_samples = 0;
-        cudaEventRecord(start); 
+        cudaEventRecord(start);
 
         for (auto &batch : *train_dl_mnist)
         {
@@ -115,7 +138,7 @@ int main()
 
             torch::Tensor outputs = model_fcnet->forward(batch_data);
             torch::Tensor loss = torch::nll_loss(outputs, batch_target);
-            
+
             loss.backward();
             optimizer_fcnet.step();
             running_loss += loss.item<double>();
@@ -125,8 +148,7 @@ int main()
 
             if (++batch_index % log_interval == 0)
             {
-                std::cout << "[" << epoch << "]\t[" << batch_index <<
-                    "]\tLoss: " << loss.item<float>() << std::endl;
+                std::cout << "[" << epoch << "]\t[" << batch_index << "]\tLoss: " << loss.item<float>() << std::endl;
             }
         }
 
@@ -134,16 +156,16 @@ int main()
         cudaEventSynchronize(stop);
         cudaEventElapsedTime(&milliseconds, start, stop);
 
-
         std::cout << "Epoch time: " << milliseconds << " ms" << std::endl;
-        results_file << "FullyConnectedNet,training," 
-            << epoch << "," << running_loss / (batch_index+1) << ","
-            << (float)running_corrects / (float)num_samples << ","
-            << milliseconds << std::endl;
+        results_file << "FullyConnectedNet,training,"
+                     << epoch << "," << running_loss / (batch_index + 1) << ","
+                     << (float)running_corrects / (float)num_samples << ","
+                     << milliseconds << std::endl;
     }
 
     model_fcnet->eval();
-    for (auto &batch : *test_dl_mnist) {
+    for (auto &batch : *test_dl_mnist)
+    {
         cudaEventRecord(start);
 
         torch::Tensor batch_data = batch.data.to(device);
@@ -153,16 +175,16 @@ int main()
         torch::Tensor loss = torch::nll_loss(outputs, batch_target);
         torch::Tensor predictions = std::get<1>(torch::max(outputs, 1));
         int corrects = torch::sum(predictions == batch_target).item<int>();
-        
+
         cudaEventRecord(stop);
         cudaEventSynchronize(stop);
         cudaEventElapsedTime(&milliseconds, start, stop);
-        
+
         std::cout << "Eval time: " << milliseconds << " ms" << std::endl;
-        results_file << "FullyConnectedNet,inference," 
-            << 1 << "," << loss.item<float>() << ","
-            << (float)corrects / (float)batch.data.size(0) << ","
-            << milliseconds << std::endl;
+        results_file << "FullyConnectedNet,inference,"
+                     << 1 << "," << loss.item<float>() << ","
+                     << (float)corrects / (float)batch.data.size(0) << ","
+                     << milliseconds << std::endl;
         break;
     }
 
@@ -190,7 +212,7 @@ int main()
 
             torch::Tensor outputs = model_scvnet->forward(batch_data);
             torch::Tensor loss = torch::nll_loss(outputs, batch_target);
-            
+
             loss.backward();
             optimizer_scvnet.step();
             running_loss += loss.item<double>();
@@ -199,8 +221,7 @@ int main()
 
             if (++batch_index % log_interval == 0)
             {
-                std::cout << "[" << epoch << "]\t[" << batch_index <<
-                    "]\tLoss: " << loss.item<float>() << std::endl;
+                std::cout << "[" << epoch << "]\t[" << batch_index << "]\tLoss: " << loss.item<float>() << std::endl;
             }
         }
 
@@ -208,16 +229,16 @@ int main()
         cudaEventSynchronize(stop);
         cudaEventElapsedTime(&milliseconds, start, stop);
 
-
         std::cout << "Epoch time: " << milliseconds << " ms" << std::endl;
-        results_file << "SimpleConvNet,training," 
-            << epoch << "," << running_loss / (batch_index+1) << ","
-            << (float)running_corrects / (float)num_samples << ","
-            << milliseconds << std::endl;
+        results_file << "SimpleConvNet,training,"
+                     << epoch << "," << running_loss / (batch_index + 1) << ","
+                     << (float)running_corrects / (float)num_samples << ","
+                     << milliseconds << std::endl;
     }
 
     model_scvnet->eval();
-    for (auto &batch : *test_dl_mnist) {
+    for (auto &batch : *test_dl_mnist)
+    {
         cudaEventRecord(start);
 
         torch::Tensor batch_data = batch.data.to(device);
@@ -227,15 +248,15 @@ int main()
         torch::Tensor loss = torch::nll_loss(outputs, batch_target);
         torch::Tensor predictions = std::get<1>(torch::max(outputs, 1));
         int corrects = torch::sum(predictions == batch_target).item<int>();
-        
+
         cudaEventRecord(stop);
         cudaEventSynchronize(stop);
         cudaEventElapsedTime(&milliseconds, start, stop);
-        
-        results_file << "SimpleConvNet,inference," 
-            << 1 << "," << loss.item<float>() << ","
-            << (float)corrects / (float)batch.data.size(0) << ","
-            << milliseconds << std::endl;
+
+        results_file << "SimpleConvNet,inference,"
+                     << 1 << "," << loss.item<float>() << ","
+                     << (float)corrects / (float)batch.data.size(0) << ","
+                     << milliseconds << std::endl;
         break;
     }
 
@@ -263,7 +284,7 @@ int main()
 
             torch::Tensor outputs = model_resnet50_native->forward(batch_data);
             torch::Tensor loss = torch::nll_loss(torch::log_softmax(outputs, /*dim=*/1), batch_target);
-            
+
             loss.backward();
             optimizer_resnet50_native.step();
             running_loss += loss.item<double>();
@@ -272,8 +293,7 @@ int main()
 
             if (++batch_index % log_interval == 0)
             {
-                std::cout << "[" << epoch << "]\t[" << batch_index <<
-                    "]\tLoss: " << loss.item<float>() << std::endl;
+                std::cout << "[" << epoch << "]\t[" << batch_index << "]\tLoss: " << loss.item<float>() << std::endl;
             }
         }
 
@@ -281,16 +301,16 @@ int main()
         cudaEventSynchronize(stop);
         cudaEventElapsedTime(&milliseconds, start, stop);
 
-
         std::cout << "Epoch time: " << milliseconds << " ms" << std::endl;
-        results_file << "NativeResNet50,training," 
-            << epoch << "," << running_loss / (batch_index+1) << ","
-            << (float)running_corrects / (float)num_samples << ","
-            << milliseconds << std::endl;
+        results_file << "NativeResNet50,training,"
+                     << epoch << "," << running_loss / (batch_index + 1) << ","
+                     << (float)running_corrects / (float)num_samples << ","
+                     << milliseconds << std::endl;
     }
 
     model_resnet50_native->eval();
-    for (auto &batch : *test_dl_cifar10) {
+    for (auto &batch : *test_dl_cifar10)
+    {
         cudaEventRecord(start);
 
         torch::Tensor batch_data = batch.data.to(device);
@@ -300,25 +320,27 @@ int main()
         torch::Tensor loss = torch::nll_loss(torch::log_softmax(outputs, /*dim=*/1), batch_target);
         torch::Tensor predictions = std::get<1>(torch::max(outputs, 1));
         int corrects = torch::sum(predictions == batch_target).item<int>();
-        
+
         cudaEventRecord(stop);
         cudaEventSynchronize(stop);
         cudaEventElapsedTime(&milliseconds, start, stop);
-        
-        results_file << "NativeResNet50,inference," 
-            << 1 << "," << loss.item<float>() << ","
-            << (float)corrects / (float)batch.data.size(0) << ","
-            << milliseconds << std::endl;
+
+        results_file << "NativeResNet50,inference,"
+                     << 1 << "," << loss.item<float>() << ","
+                     << (float)corrects / (float)batch.data.size(0) << ","
+                     << milliseconds << std::endl;
         break;
     }
 
     //===========================================================serailized PyTorch models
     std::string models[] = {"ResNet-50", "DenseNet-121", "MobileNet-v2", "ConvNeXt-Small"};
 
-    for (std::string model_name : models) {
+    for (std::string model_name : models)
+    {
         torch::jit::script::Module model_to_be_moved = torch::jit::load("./serialized_models/" + model_name + "_for_cifar10.pt");
         std::shared_ptr<torch::jit::script::Module> model = std::make_shared<torch::jit::script::Module>(model_to_be_moved);
-        if (model == nullptr) {
+        if (model == nullptr)
+        {
             std::cout << "Error materializing a model from ./serialized_models/" + model_name + "_for_cifar10.pt" << std::endl;
             break;
         }
@@ -328,7 +350,8 @@ int main()
         model->to(device);
         // workaround, since torch::jit::parameter_list is not supported by torch::optim::SGD
         std::vector<at::Tensor> model_parameters;
-        for (const auto& params : model->parameters()) {
+        for (const auto &params : model->parameters())
+        {
             model_parameters.push_back(params);
         }
         torch::optim::SGD optimizer(model_parameters, /*lr=*/lr);
@@ -355,7 +378,7 @@ int main()
                 batch_data_ivalues.push_back(batch_data);
                 torch::Tensor outputs = model->forward(batch_data_ivalues).toTensor();
                 torch::Tensor loss = torch::nll_loss(torch::log_softmax(outputs, /*dim=*/1), batch_target);
-                
+
                 loss.backward();
                 optimizer.step();
                 running_loss += loss.item<double>();
@@ -364,8 +387,7 @@ int main()
 
                 if (++batch_index % log_interval == 0)
                 {
-                    std::cout << "[" << epoch << "]\t[" << batch_index <<
-                        "]\tLoss: " << loss.item<float>() << std::endl;
+                    std::cout << "[" << epoch << "]\t[" << batch_index << "]\tLoss: " << loss.item<float>() << std::endl;
                 }
             }
 
@@ -373,16 +395,16 @@ int main()
             cudaEventSynchronize(stop);
             cudaEventElapsedTime(&milliseconds, start, stop);
 
-
             std::cout << "Epoch time: " << milliseconds << " ms" << std::endl;
-            results_file << model_name << ",training," 
-                << epoch << "," << running_loss / (batch_index+1) << ","
-                << (float)running_corrects / (float)num_samples << ","
-                << milliseconds << std::endl;
+            results_file << model_name << ",training,"
+                         << epoch << "," << running_loss / (batch_index + 1) << ","
+                         << (float)running_corrects / (float)num_samples << ","
+                         << milliseconds << std::endl;
         }
 
         model->eval();
-        for (auto &batch : *test_dl_cifar10) {
+        for (auto &batch : *test_dl_cifar10)
+        {
             cudaEventRecord(start);
 
             torch::Tensor batch_data = batch.data.to(device);
@@ -394,15 +416,15 @@ int main()
             torch::Tensor loss = torch::nll_loss(torch::log_softmax(outputs, /*dim=*/1), batch_target);
             torch::Tensor predictions = std::get<1>(torch::max(outputs, 1));
             int corrects = torch::sum(predictions == batch_target).item<int>();
-            
+
             cudaEventRecord(stop);
             cudaEventSynchronize(stop);
             cudaEventElapsedTime(&milliseconds, start, stop);
-            
-            results_file << model_name << ",inference," 
-                << 1 << "," << loss.item<float>() << ","
-                << (float)corrects / (float)batch.data.size(0) << ","
-                << milliseconds << std::endl;
+
+            results_file << model_name << ",inference,"
+                         << 1 << "," << loss.item<float>() << ","
+                         << (float)corrects / (float)batch.data.size(0) << ","
+                         << milliseconds << std::endl;
             break;
         }
     }

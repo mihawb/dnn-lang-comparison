@@ -25,7 +25,7 @@ constexpr const uint32_t image_height{32};
 constexpr const uint32_t image_width{32};
 constexpr const uint32_t image_channels{3};
 
-std::string join_paths(std::string head, const std::string& tail)
+std::string join_paths(std::string head, const std::string &tail)
 {
     if (head.back() != '/')
     {
@@ -35,11 +35,11 @@ std::string join_paths(std::string head, const std::string& tail)
     return head;
 }
 
-torch::Tensor read_targets_from_file(const std::string& file_path)
+torch::Tensor read_targets_from_file(const std::string &file_path)
 {
     torch::Tensor targets =
         torch::empty({num_samples_per_file * 1}, torch::kUInt8);
-    uint8_t* ptr_data = targets.data_ptr<uint8_t>();
+    uint8_t *ptr_data = targets.data_ptr<uint8_t>();
 
     uint32_t count{0};
     std::fstream f;
@@ -53,7 +53,7 @@ torch::Tensor read_targets_from_file(const std::string& file_path)
     {
         while (f.peek() != EOF)
         {
-            f.read(reinterpret_cast<char*>(ptr_data + count * 1), 1);
+            f.read(reinterpret_cast<char *>(ptr_data + count * 1), 1);
             count += 1;
             f.ignore(image_height * image_width * image_channels * 1);
         }
@@ -68,14 +68,14 @@ torch::Tensor read_targets_from_file(const std::string& file_path)
     return targets;
 }
 
-torch::Tensor read_images_from_file(const std::string& file_path)
+torch::Tensor read_images_from_file(const std::string &file_path)
 {
     constexpr const uint32_t num_image_bytes{image_height * image_width *
                                              image_channels * 1};
 
     torch::Tensor images =
         torch::empty({num_samples_per_file * num_image_bytes}, torch::kUInt8);
-    uint8_t* ptr_data = images.data_ptr<uint8_t>();
+    uint8_t *ptr_data = images.data_ptr<uint8_t>();
 
     uint32_t count{0};
     std::fstream f;
@@ -90,7 +90,7 @@ torch::Tensor read_images_from_file(const std::string& file_path)
         while (f.peek() != EOF)
         {
             f.ignore(1);
-            f.read(reinterpret_cast<char*>(ptr_data + count * num_image_bytes),
+            f.read(reinterpret_cast<char *>(ptr_data + count * num_image_bytes),
                    num_image_bytes);
             count += 1;
         }
@@ -111,7 +111,7 @@ torch::Tensor read_images_from_file(const std::string& file_path)
     return images;
 }
 
-torch::Tensor read_images(const std::string& root, bool train)
+torch::Tensor read_images(const std::string &root, bool train)
 {
     std::vector<std::string> data_set_file_names;
     if (train)
@@ -124,14 +124,14 @@ torch::Tensor read_images(const std::string& root, bool train)
     }
 
     std::vector<std::string> data_set_file_paths;
-    for (const std::string& data_set_file_name : data_set_file_names)
+    for (const std::string &data_set_file_name : data_set_file_names)
     {
         data_set_file_paths.push_back(join_paths(root, data_set_file_name));
     }
 
     std::vector<torch::Tensor> image_tensors;
 
-    for (const std::string& data_set_file_path : data_set_file_paths)
+    for (const std::string &data_set_file_path : data_set_file_paths)
     {
         torch::Tensor images = read_images_from_file(data_set_file_path);
         image_tensors.push_back(images);
@@ -144,7 +144,7 @@ torch::Tensor read_images(const std::string& root, bool train)
     return images;
 }
 
-torch::Tensor read_targets(const std::string& root, bool train)
+torch::Tensor read_targets(const std::string &root, bool train)
 {
     std::vector<std::string> data_set_file_names;
     if (train)
@@ -157,14 +157,14 @@ torch::Tensor read_targets(const std::string& root, bool train)
     }
 
     std::vector<std::string> data_set_file_paths;
-    for (const std::string& data_set_file_name : data_set_file_names)
+    for (const std::string &data_set_file_name : data_set_file_names)
     {
         data_set_file_paths.push_back(join_paths(root, data_set_file_name));
     }
 
     std::vector<torch::Tensor> target_tensors;
 
-    for (const std::string& data_set_file_path : data_set_file_paths)
+    for (const std::string &data_set_file_path : data_set_file_paths)
     {
         torch::Tensor targets = read_targets_from_file(data_set_file_path);
         target_tensors.push_back(targets);
@@ -177,7 +177,7 @@ torch::Tensor read_targets(const std::string& root, bool train)
     return targets;
 }
 
-CIFAR10::CIFAR10(const std::string& root, Mode mode)
+CIFAR10::CIFAR10(const std::string &root, Mode mode)
     : images_(read_images(root, mode == Mode::kTrain)),
       targets_(read_targets(root, mode == Mode::kTrain))
 {
@@ -196,6 +196,6 @@ bool CIFAR10::is_train() const noexcept
            num_samples_per_file * train_set_file_names.size();
 }
 
-const torch::Tensor& CIFAR10::images() const { return images_; }
+const torch::Tensor &CIFAR10::images() const { return images_; }
 
-const torch::Tensor& CIFAR10::targets() const { return targets_; }
+const torch::Tensor &CIFAR10::targets() const { return targets_; }
