@@ -1,6 +1,12 @@
 #!/bin/bash
-if ! [ $(find . -name "*.pt" | wc -l) -gt 0 ]; then
-	python model_serializer.py
+if [ "$1" = "-s" ] || [ "$1" = "--serialize" ]; then 
+	echo "Serializing PyTorch models..."
+	if ! [ $(find . -name "*.pt" | wc -l) -gt 0 ]; then
+		python model_serializer.py
+	fi
+else
+	echo "Omitting PyTorch model serialization."
+	echo "Use -s or --serialize flag to serialize models."
 fi
 
 if ! [ -d build ]; then

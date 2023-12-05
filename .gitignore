@@ -19,4 +19,5 @@ libtorch/libtorch-cxx11
 cpp_old/
 .vscode
 *.png
+*.jpg
 *.pt
