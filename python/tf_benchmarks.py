@@ -98,7 +98,7 @@ def train_single_model(model_name, config, telemetry, child_conn):
 	# epoch and elapsed_time handeled by PerfCounterCallback
 
 	child_conn.send(telemetry)
-	pd.DataFrame(telemetry).to_csv(f'../results/tensorflow_results.csv', index=False)
+	pd.DataFrame(telemetry).to_csv(f'../results/tensorflow.csv', index=False)
 
 	del model, train_ds, test_ds, train_history
 
@@ -181,7 +181,7 @@ def train_dcgan(config, telemetry, child_conn):
 	telemetry['elapsed_time'].append(end - start)
 
 	child_conn.send(telemetry)
-	pd.DataFrame(telemetry).to_csv(f'../results/tensorflow_results.csv', index=False)
+	pd.DataFrame(telemetry).to_csv(f'../results/tensorflow.csv', index=False)
 
 	del modelG, modelD, celeba_ds
 

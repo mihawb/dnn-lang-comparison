@@ -61,7 +61,7 @@ if __name__ == '__main__':
 	log_interval = 200
 	start = torch.cuda.Event(enable_timing=True)
 	end = torch.cuda.Event(enable_timing=True)
-	results_filepath = f'../results/pytorch_results.csv'
+	results_filepath = f'../results/pytorch.csv'
 
 	use_cuda = torch.cuda.is_available()
 	device = torch.device("cuda" if use_cuda else "cpu")
@@ -83,10 +83,12 @@ if __name__ == '__main__':
 
 			_, accuracy = test(model, device, test_dl, loss_func, silent=True)
 
+			train_history = np.mean(train_history)
+
 			telemetry['model_name'].append(model_name)
 			telemetry['type'].append('training')
 			telemetry['epoch'].append(epoch)
-			telemetry['loss'].append(train_history[-1])
+			telemetry['loss'].append(train_history)
 			telemetry['performance'].append(accuracy)
 			telemetry['elapsed_time'].append(start.elapsed_time(end))
 
@@ -130,7 +132,7 @@ if __name__ == '__main__':
 		end = time.perf_counter_ns()
 
 		for stat in gan_hist:
-			gan_hist[stat] = np.mean(gan_hist[stat])
+			gan_hist[stat] = np.mean(gan_hist[stat])		
 
 		telemetry['model_name'].append('DCGAN')
 		telemetry['type'].append('training')
@@ -142,7 +144,7 @@ if __name__ == '__main__':
 
 	# generation
 	start = time.perf_counter_ns()
-	_ = generate(netG, device, 1, test_batch_size=test_batch_size, save=True)
+	_ = generate(netG, device, 1, test_batch_size=test_batch_size, save=False)
 	end = time.perf_counter_ns()
 
 	telemetry['model_name'].append('DCGAN')

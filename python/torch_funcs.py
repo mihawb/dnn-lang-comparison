@@ -330,15 +330,19 @@ class Generator(nn.Module):
             nn.ConvTranspose2d(latent_vec_size, feat_map_size * 8, 4, 1, 0, bias=False),
             nn.BatchNorm2d(feat_map_size * 8),
             nn.ReLU(True),
+
             nn.ConvTranspose2d(feat_map_size * 8, feat_map_size * 4, 4, 2, 1, bias=False),
             nn.BatchNorm2d(feat_map_size * 4),
             nn.ReLU(True),
+
             nn.ConvTranspose2d(feat_map_size * 4, feat_map_size * 2, 4, 2, 1, bias=False),
             nn.BatchNorm2d(feat_map_size * 2),
             nn.ReLU(True),
+
             nn.ConvTranspose2d(feat_map_size * 2, feat_map_size, 4, 2, 1, bias=False),
             nn.BatchNorm2d(feat_map_size),
             nn.ReLU(True),
+			
             nn.ConvTranspose2d(feat_map_size, n_channels, 4, 2, 1, bias=False),
             nn.Tanh()
         )
@@ -353,15 +357,19 @@ class Discriminator(nn.Module):
         self.main = nn.Sequential(
             nn.Conv2d(n_channels, feat_map_size, 4, 2, 1, bias=False),
             nn.LeakyReLU(0.2, inplace=True),
+
             nn.Conv2d(feat_map_size, feat_map_size * 2, 4, 2, 1, bias=False),
             nn.BatchNorm2d(feat_map_size * 2),
             nn.LeakyReLU(0.2, inplace=True),
+
             nn.Conv2d(feat_map_size * 2, feat_map_size * 4, 4, 2, 1, bias=False),
             nn.BatchNorm2d(feat_map_size * 4),
             nn.LeakyReLU(0.2, inplace=True),
+
             nn.Conv2d(feat_map_size * 4, feat_map_size * 8, 4, 2, 1, bias=False),
             nn.BatchNorm2d(feat_map_size * 8),
             nn.LeakyReLU(0.2, inplace=True),
+
             nn.Conv2d(feat_map_size * 8, 1, 4, 1, 0, bias=False),
             nn.Sigmoid()
         )
