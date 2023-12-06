@@ -64,6 +64,22 @@ struct ResNet50 : torch::nn::Module
     torch::nn::Linear fc1{nullptr};
 };
 
-// std::shared_ptr<torch::nn::Module> model_factory(std::string model_name);
+struct Generator : torch::nn::Module
+{
+    Generator(int n_channels = 3, int latent_vec_size = 100, int feat_map_size = 3);
+
+    torch::Tensor forward(torch::Tensor x);
+
+    torch::nn::Sequential main{nullptr};
+};
+
+struct Discriminator : torch::nn::Module
+{
+    Discriminator(int n_channels = 3, int feat_map_size = 3);
+
+    torch::Tensor forward(torch::Tensor x);
+
+    torch::nn::Sequential main{nullptr};
+};
 
 #endif // _MODELS_H_

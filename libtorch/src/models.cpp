@@ -234,15 +234,61 @@ torch::Tensor ResNet50::forward(torch::Tensor x)
 	return x;
 }
 
-// std::shared_ptr<torch::nn::Module> model_factory(std::string model_name)
-// {
-// 	if (model_name.compare("FullyConnectedNet") == 0)
-// 		return std::make_shared<FullyConnectedNet>();
-// 	else if (model_name.compare("SimpleConvNet") == 0)
-// 		return std::make_shared<SimpleConvNet>();
-// 	else
-// 	{
-// 		std::cout << "Bad model name in model factory. Falling back to FullyConnectedNet" << std::endl;
-// 		return std::make_shared<FullyConnectedNet>();
-// 	}
-// }
+Generator::Generator(int n_channels, int latent_vec_size, int feat_map_size)
+{
+	torch::nn::Sequential main_unreg{
+		torch::nn::ConvTranspose2d(torch::nn::ConvTranspose2dOptions(latent_vec_size, feat_map_size * 8, 4).stride(1).padding(0).bias(false)),
+		torch::nn::BatchNorm2d(torch::nn::BatchNorm1dOptions(feat_map_size * 8)),
+		torch::nn::ReLU(torch::nn::ReLUOptions(true)),
+
+		torch::nn::ConvTranspose2d(torch::nn::ConvTranspose2dOptions(feat_map_size * 8, feat_map_size * 4, 4).stride(2).padding(1).bias(false)),
+		torch::nn::BatchNorm2d(torch::nn::BatchNorm1dOptions(feat_map_size * 4)),
+		torch::nn::ReLU(torch::nn::ReLUOptions(true)),
+
+		torch::nn::ConvTranspose2d(torch::nn::ConvTranspose2dOptions(feat_map_size * 4, feat_map_size * 2, 4).stride(2).padding(1).bias(false)),
+		torch::nn::BatchNorm2d(torch::nn::BatchNorm1dOptions(feat_map_size * 2)),
+		torch::nn::ReLU(torch::nn::ReLUOptions(true)),
+
+		torch::nn::ConvTranspose2d(torch::nn::ConvTranspose2dOptions(feat_map_size * 2, feat_map_size, 4).stride(2).padding(1).bias(false)),
+		torch::nn::BatchNorm2d(torch::nn::BatchNorm1dOptions(feat_map_size)),
+		torch::nn::ReLU(torch::nn::ReLUOptions(true)),
+
+		torch::nn::ConvTranspose2d(torch::nn::ConvTranspose2dOptions(feat_map_size, n_channels, 4).stride(2).padding(1).bias(false)),
+		torch::nn::Tanh()
+	};
+	this->main = register_module("main", main_unreg);
+}
+
+torch::Tensor Generator::forward(torch::Tensor x)
+{
+	return this->main->forward(x);
+}
+
+Discriminator::Discriminator(int n_channels, int feat_map_size)
+{
+	torch::nn::Sequential main_unreg{
+		torch::nn::Conv2d(torch::nn::Conv2dOptions(n_channels, feat_map_size, 4).stride(2).padding(1).bias(false)),
+		torch::nn::LeakyReLU(torch::nn::LeakyReLUOptions().negative_slope(0.2).inplace(true)),
+
+		torch::nn::Conv2d(torch::nn::Conv2dOptions(feat_map_size, feat_map_size * 2, 4).stride(2).padding(1).bias(false)),
+		torch::nn::BatchNorm2d(torch::nn::BatchNorm1dOptions(feat_map_size * 2)),
+		torch::nn::LeakyReLU(torch::nn::LeakyReLUOptions().negative_slope(0.2).inplace(true)),
+
+		torch::nn::Conv2d(torch::nn::Conv2dOptions(feat_map_size * 2, feat_map_size * 4, 4).stride(2).padding(1).bias(false)),
+		torch::nn::BatchNorm2d(torch::nn::BatchNorm1dOptions(feat_map_size * 4)),
+		torch::nn::LeakyReLU(torch::nn::LeakyReLUOptions().negative_slope(0.2).inplace(true)),
+
+		torch::nn::Conv2d(torch::nn::Conv2dOptions(feat_map_size * 4, feat_map_size * 8, 4).stride(2).padding(1).bias(false)),
+		torch::nn::BatchNorm2d(torch::nn::BatchNorm1dOptions(feat_map_size * 8)),
+		torch::nn::LeakyReLU(torch::nn::LeakyReLUOptions().negative_slope(0.2).inplace(true)),
+
+		torch::nn::Conv2d(torch::nn::Conv2dOptions(feat_map_size * 8, 1, 4).stride(1).padding(0).bias(false)),
+		torch::nn::Sigmoid()
+	};
+	this->main = register_module("main", main_unreg);
+}
+
+torch::Tensor Discriminator::forward(torch::Tensor x)
+{
+	return this->main->forward(x);
+}
