@@ -14,16 +14,17 @@
 #include "cifar10.h"
 #include "celeba.h"
 
-int main()
+int main_celeba_tests()
 {
     auto train_dl_celeba = torch::data::make_data_loader(
-        CELEBA{"../datasets/celeba"}.map(torch::data::transforms::Stack<>()),
+        CELEBA{"../datasets/celeba_trunc"}.map(torch::data::transforms::Stack<>()),
         /*batch_size=*/96);
 
     for (auto &batch : *train_dl_celeba)
     {
         std::cout << "celeba batch img sizes: " << batch.data.sizes() << std::endl;
         std::cout << "celeba batch target(?) sizes: " << batch.target.sizes() << std::endl;
+        std::cout << "celeba dtype " << batch.data.dtype() << std::endl;
         break;
     }
 
@@ -36,6 +37,7 @@ int main()
     {
         std::cout << "cifar10 batch img sizes: " << batch.data.sizes() << std::endl;
         std::cout << "cifar10 batch target sizes: " << batch.target.sizes() << std::endl;
+        std::cout << "cifar10 dtype " << batch.data.dtype() << std::endl;
         break;
     }
 
@@ -61,7 +63,7 @@ int main_for_tests()
     return 0;
 }
 
-int main_main()
+int main()
 {
     torch::Device device(torch::kCPU);
     if (torch::cuda::is_available())
@@ -75,6 +77,9 @@ int main_main()
         return -1;
     }
 
+    std::cout << std::fixed << std::showpoint;
+    std::cout << std::setprecision(4);
+
     std::ofstream results_file;
     results_file.open("../results/libtorch.csv", std::ios::out);
     results_file << "model_name,type,epoch,loss,performance,elapsed_time" << std::endl;
@@ -85,7 +90,7 @@ int main_main()
     float lr = 0.01;
     float momentum = 0.9;
     int num_classes = 10;
-    int log_interval = 200;
+    int log_interval = 30;
     cudaEvent_t start, stop;
     cudaEventCreate(&start);
     cudaEventCreate(&stop);
@@ -112,6 +117,10 @@ int main_main()
         CIFAR10{"../datasets/cifar-10-binary/cifar-10-batches-bin", CIFAR10::Mode::kTest}
             .map(torch::data::transforms::Stack<>()),
         /*batch_size=*/test_batch_size);
+
+    // multi-threaded data loader for the CIFAR-10 dataset of size [batch_size, 3, 64, 64]
+    auto train_dl_celeba = torch::data::make_data_loader(
+        CELEBA{"../datasets/celeba_trunc"}.map(torch::data::transforms::Stack<>()), batch_size);
 
     //===================================================================FullyConnectedNet
     // new net via reference semantics
@@ -428,6 +437,109 @@ int main_main()
             break;
         }
     }
+
+    //===============================================================================DCGAN
+    std::cout << "Benchmarks for DCGAN begin." << std::endl;
+    int latent_vec_size = 100;
+    auto generator = std::make_shared<Generator>();
+    auto discriminator = std::make_shared<Discriminator>();
+
+    generator->to(device);
+    discriminator->to(device);
+
+    torch::optim::Adam gen_optimizer(generator->parameters(),
+                                     torch::optim::AdamOptions(lr).betas(std::make_tuple(0.5, 0.999)));
+    torch::optim::Adam disc_optimizer(discriminator->parameters(),
+                                      torch::optim::AdamOptions(lr).betas(std::make_tuple(0.5, 0.999)));
+
+    generator->train();
+    discriminator->train();
+
+    for (size_t epoch = 1; epoch < epochs; ++epoch)
+    {
+        size_t batch_index = 0;
+        double running_loss_G = 0.0, running_loss_D = 0.0;
+        double running_D_x = 0.0, running_D_G_z1 = 0.0, running_D_G_z2 = 0.0;
+        double real_label = 1.0, fake_label = 0.0;
+        cudaEventRecord(start);
+
+        for (auto &batch : *train_dl_celeba)
+        {
+            disc_optimizer.zero_grad();
+            torch::Tensor real_cpu = batch.data.to(device);
+            int b_size = real_cpu.size(0);
+            auto label = torch::full({b_size}, real_label,
+                                     torch::TensorOptions().dtype(torch::kFloat).device(device));
+
+            torch::Tensor output = discriminator->forward(real_cpu).view(-1);
+            torch::Tensor errD_real = torch::binary_cross_entropy(output, label);
+            errD_real.backward();
+            auto D_x = output.mean().item();
+
+            torch::Tensor noise = torch::randn({b_size, latent_vec_size, 1, 1},
+                                               torch::TensorOptions().device(device));
+            torch::Tensor fake = generator->forward(noise);
+            label.fill_(fake_label);
+            output = discriminator->forward(fake.detach()).view(-1);
+            torch::Tensor errD_fake = torch::binary_cross_entropy(output, label);
+            errD_fake.backward();
+            auto D_G_z1 = output.mean().item();
+            auto errD = errD_real + errD_fake;
+            disc_optimizer.step();
+
+            gen_optimizer.zero_grad();
+            label.fill_(real_label);
+            output = discriminator->forward(fake).view(-1);
+            torch::Tensor errG = torch::binary_cross_entropy(output, label);
+            errG.backward();
+            auto D_G_z2 = output.mean().item();
+            gen_optimizer.step();
+
+            // telemetry
+            running_loss_G += errG.item<double>();
+            running_loss_D += errD.item<double>();
+            running_D_x += D_x.toDouble();
+            running_D_G_z1 += D_G_z1.toDouble();
+            running_D_G_z2 += D_G_z2.toDouble();
+
+            if (++batch_index % log_interval == 0)
+            {
+                std::cout << "[" << epoch << "]\t[" << batch_index
+                          << "]\tLoss_G: " << errG.item<double>()
+                          << "\tLoss_D: " << errD.item<double>()
+                          << "\tD(x): " << D_x.toDouble()
+                          << "\tD(G(z)): " << D_G_z1.toDouble() << " / " << D_G_z2.toDouble()
+                          << std::endl;
+            }
+        }
+
+        cudaEventRecord(stop);
+        cudaEventSynchronize(stop);
+        cudaEventElapsedTime(&milliseconds, start, stop);
+
+        running_loss_G /= (batch_index + 1);
+        running_loss_D /= (batch_index + 1);
+        running_D_x /= (batch_index + 1);
+        running_D_G_z1 /= (batch_index + 1);
+        running_D_G_z2 /= (batch_index + 1);
+
+        std::cout << "Epoch time: " << milliseconds << " ms" << std::endl;
+        results_file << "DCGAN,training,"
+                     << epoch << ","
+                     << running_loss_G << "," << running_loss_D << ","
+                     << running_D_x << "|" << running_D_G_z1 << "|" << running_D_G_z2 << ","
+                     << milliseconds << std::endl;
+    }
+
+    torch::Tensor latent_vecs_batch = torch::randn(
+        {test_batch_size, latent_vec_size, 1, 1}, torch::TensorOptions().device(device));
+    cudaEventRecord(start);
+    torch::Tensor res_images = generator->forward(latent_vecs_batch);
+    cudaEventRecord(stop);
+    cudaEventSynchronize(stop);
+    cudaEventElapsedTime(&milliseconds, start, stop);
+
+    results_file << "DCGAN,generation,1,-1,-1," << milliseconds << std::endl;
 
     results_file.close();
     return 0;

@@ -11,12 +11,6 @@
 #include "celeba.h"
 #include "cifar10.h"
 
-const std::vector<std::string> train_set_file_names{
-    "data_batch_1.bin", "data_batch_2.bin", "data_batch_3.bin",
-    "data_batch_4.bin", "data_batch_5.bin"};
-const std::vector<std::string> test_set_file_names{"test_batch.bin"};
-const std::string meta_data_file_name{"batches.meta.txt"};
-
 const std::string inner_root{"img_align_celeba"};
 
 // constexpr const uint32_t num_samples{202599};
