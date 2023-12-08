@@ -13,13 +13,14 @@
 
 const std::string inner_root{"img_align_celeba"};
 
-// constexpr const uint32_t num_samples{202599};
-constexpr const uint32_t num_samples{12600}; // temporary num since reading in takes too long
+// constexpr const uint32_t num_samples{202599}; // full celeba dataset
+// constexpr const uint32_t num_samples{12600}; // temporary since reading in takes too long
+constexpr const uint32_t num_samples{50000}; // truncated celeba since full ds does not fit into my ram
 constexpr const uint32_t image_height{64};
 constexpr const uint32_t image_width{64};
 constexpr const uint32_t image_channels{3};
 
-constexpr const uint32_t num_progress_bars{10};
+constexpr const uint32_t num_progress_bars{20};
 constexpr const uint32_t bar_width{num_samples / num_progress_bars};
 
 void draw_progress_bar(int count)
@@ -53,23 +54,22 @@ torch::Tensor read_images_from_root(std::string root)
         throw std::invalid_argument(root + " is not a valid root directory.");
     }
 
-    std::vector<torch::Tensor> img_tensors;
-    int count = 0;
+    torch::Tensor result = torch::zeros({num_samples, 3, 64, 64});
+    int sample_index = 0;
     for (const auto &img_hand : std::filesystem::directory_iterator(root))
     {
-        img_tensors.push_back(read_single_image(img_hand.path()));
+        result[sample_index++] = read_single_image(img_hand.path());
 
         // drawing progress bar since it takes a while
-        draw_progress_bar(++count);
+        draw_progress_bar(sample_index);
     }
     std::cout << std::endl;
 
-    torch::Tensor images = torch::stack(img_tensors);
     assert(
-        (images.sizes()[0] == num_samples) &&
+        (sample_index == num_samples) &&
         "Insufficient number of images. Data file might have been corrupted.");
 
-    return images;
+    return result;
 }
 
 torch::Tensor read_images(const std::string &root)
@@ -79,9 +79,10 @@ torch::Tensor read_images(const std::string &root)
     return images;
 }
 
-CELEBA::CELEBA(const std::string &root)
+CELEBA::CELEBA(const std::string &root, const int batch_size)
     : images_(read_images(root)),
-      targets_(torch::zeros({num_samples}))
+      targets_(torch::zeros({num_samples})),
+      batch_size_(batch_size)
 {
 }
 
@@ -97,3 +98,21 @@ bool CELEBA::is_train() const noexcept { return true; }
 const torch::Tensor &CELEBA::images() const { return images_; }
 
 const torch::Tensor &CELEBA::targets() const { return targets_; }
+
+int CELEBA::get_max_batch_id() { return num_samples / batch_size_ - 1; }
+
+torch::Tensor CELEBA::get_batch_by_id(int batch_id)
+{
+    // ensure validity of batch_id
+    int max_batch_id = num_samples / batch_size_ - 1;
+    max_batch_id = num_samples % batch_size_ == 0 ? max_batch_id : max_batch_id + 1;
+    batch_id = batch_id > max_batch_id ? max_batch_id : batch_id;
+
+    int batch_size_used = batch_size_;
+    // ensure validity batch size if last batch
+    if (batch_id == max_batch_id)
+        batch_size_used = num_samples - batch_size_ * batch_id;
+
+    torch::Tensor batch = images_.narrow(0, batch_id * batch_size_, batch_size_used);
+    return batch;
+}

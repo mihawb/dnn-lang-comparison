@@ -14,51 +14,15 @@
 #include "cifar10.h"
 #include "celeba.h"
 
-int main_celeba_tests()
+int main_batch_loading_test()
 {
-    auto train_dl_celeba = torch::data::make_data_loader(
-        CELEBA{"../datasets/celeba_trunc"}.map(torch::data::transforms::Stack<>()),
-        /*batch_size=*/96);
+    int batch_size = 96;
+    auto celeba = CELEBA{"../datasets/celeba_test", batch_size};
+    torch::Tensor first_batch = celeba.get_batch_by_id(0);
+    std::cout << "celeba first batch sizes: " << first_batch.sizes() << std::endl;
 
-    for (auto &batch : *train_dl_celeba)
-    {
-        std::cout << "celeba batch img sizes: " << batch.data.sizes() << std::endl;
-        std::cout << "celeba batch target(?) sizes: " << batch.target.sizes() << std::endl;
-        std::cout << "celeba dtype " << batch.data.dtype() << std::endl;
-        break;
-    }
-
-    auto train_dl_cifar10 = torch::data::make_data_loader(
-        CIFAR10{"../datasets/cifar-10-binary/cifar-10-batches-bin", CIFAR10::Mode::kTrain}
-            .map(torch::data::transforms::Stack<>()),
-        /*batch_size=*/96);
-
-    for (auto &batch : *train_dl_cifar10)
-    {
-        std::cout << "cifar10 batch img sizes: " << batch.data.sizes() << std::endl;
-        std::cout << "cifar10 batch target sizes: " << batch.target.sizes() << std::endl;
-        std::cout << "cifar10 dtype " << batch.data.dtype() << std::endl;
-        break;
-    }
-
-    return 0;
-}
-
-int main_for_tests()
-{
-    // testy xdd
-    torch::Tensor x = torch::randn({1, 64, 112, 112});
-    auto model_to_be_moved = Bottleneck(64, 64, 4, true, 2);
-    auto model = std::make_shared<Bottleneck>(model_to_be_moved);
-    torch::Tensor out = model->forward(x);
-    std::cout << torch::_shape_as_tensor(out) << std::endl
-              << std::endl;
-
-    torch::Tensor y = torch::randn({1, 3, 32, 32});
-    auto resnet_to_be_moved = ResNet50(10);
-    auto resnet = std::make_shared<ResNet50>(resnet_to_be_moved);
-    torch::Tensor pred = resnet->forward(y);
-    std::cout << pred << std::endl;
+    torch::Tensor last_batch = celeba.get_batch_by_id(132); // id already to high, 131 is max
+    std::cout << "celeba last (" << 131 << ") batch sizes: " << last_batch.sizes() << std::endl;
 
     return 0;
 }
@@ -90,7 +54,7 @@ int main()
     float lr = 0.01;
     float momentum = 0.9;
     int num_classes = 10;
-    int log_interval = 30;
+    int log_interval = 200;
     cudaEvent_t start, stop;
     cudaEventCreate(&start);
     cudaEventCreate(&stop);
@@ -117,10 +81,6 @@ int main()
         CIFAR10{"../datasets/cifar-10-binary/cifar-10-batches-bin", CIFAR10::Mode::kTest}
             .map(torch::data::transforms::Stack<>()),
         /*batch_size=*/test_batch_size);
-
-    // multi-threaded data loader for the CIFAR-10 dataset of size [batch_size, 3, 64, 64]
-    auto train_dl_celeba = torch::data::make_data_loader(
-        CELEBA{"../datasets/celeba_trunc"}.map(torch::data::transforms::Stack<>()), batch_size);
 
     //===================================================================FullyConnectedNet
     // new net via reference semantics
@@ -439,37 +399,50 @@ int main()
     }
 
     //===============================================================================DCGAN
+    auto celeba = CELEBA{"../datasets/celeba_trunc", batch_size};
+
     std::cout << "Benchmarks for DCGAN begin." << std::endl;
     int latent_vec_size = 100;
     auto generator = std::make_shared<Generator>();
     auto discriminator = std::make_shared<Discriminator>();
 
+    std::cout << "models created" << std::endl;
+
     generator->to(device);
     discriminator->to(device);
 
+    std::cout << "models moved to gpu" << std::endl;
+
     torch::optim::Adam gen_optimizer(generator->parameters(),
-                                     torch::optim::AdamOptions(lr).betas(std::make_tuple(0.5, 0.999)));
+        torch::optim::AdamOptions(lr).betas(std::make_tuple(0.5, 0.999)));
     torch::optim::Adam disc_optimizer(discriminator->parameters(),
-                                      torch::optim::AdamOptions(lr).betas(std::make_tuple(0.5, 0.999)));
+        torch::optim::AdamOptions(lr).betas(std::make_tuple(0.5, 0.999)));
+
+    std::cout << "opts created" << std::endl;
 
     generator->train();
     discriminator->train();
 
+    std::cout << "models set to train mode" << std::endl;
+
     for (size_t epoch = 1; epoch < epochs; ++epoch)
     {
+
+        std::cout << "Epoch " << epoch << " begins." << std::endl;
         size_t batch_index = 0;
         double running_loss_G = 0.0, running_loss_D = 0.0;
         double running_D_x = 0.0, running_D_G_z1 = 0.0, running_D_G_z2 = 0.0;
         double real_label = 1.0, fake_label = 0.0;
         cudaEventRecord(start);
 
-        for (auto &batch : *train_dl_celeba)
+        int max_batch = celeba.get_max_batch_id();
+        for (; batch_index < max_batch; /* incremented in telemetry */)
         {
             disc_optimizer.zero_grad();
-            torch::Tensor real_cpu = batch.data.to(device);
+            torch::Tensor real_cpu = celeba.get_batch_by_id(batch_index).to(device);
             int b_size = real_cpu.size(0);
             auto label = torch::full({b_size}, real_label,
-                                     torch::TensorOptions().dtype(torch::kFloat).device(device));
+                torch::TensorOptions().dtype(torch::kFloat).device(device));
 
             torch::Tensor output = discriminator->forward(real_cpu).view(-1);
             torch::Tensor errD_real = torch::binary_cross_entropy(output, label);
@@ -477,7 +450,7 @@ int main()
             auto D_x = output.mean().item();
 
             torch::Tensor noise = torch::randn({b_size, latent_vec_size, 1, 1},
-                                               torch::TensorOptions().device(device));
+                torch::TensorOptions().device(device));
             torch::Tensor fake = generator->forward(noise);
             label.fill_(fake_label);
             output = discriminator->forward(fake.detach()).view(-1);

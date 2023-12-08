@@ -7,7 +7,7 @@
 class CELEBA : public torch::data::datasets::Dataset<CELEBA>
 {
 public:
-    explicit CELEBA(const std::string &root);
+    explicit CELEBA(const std::string &root, const int batch_size);
 
     torch::data::Example<> get(size_t index) override;
 
@@ -19,8 +19,13 @@ public:
 
     const torch::Tensor &targets() const;
 
+    torch::Tensor get_batch_by_id(int batch_id);
+
+    int get_max_batch_id();
+
 private:
     torch::Tensor images_, targets_;
+    int batch_size_;
 };
 
 #endif
