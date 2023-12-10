@@ -1,3 +1,5 @@
+import sys
+sys.path.append('..')
 from load_datasets import load_mnist_imgs_and_labels
 
 import numpy as np
@@ -126,7 +128,7 @@ def generate(generator, device, epoch, test_batch_size=64, latent_vec_size=100, 
 
 	if save:
 		plt.imsave(
-			f'../results/pytorch_dcgan_results_{epoch}.png',
+			f'../../results/pytorch_dcgan_results_{epoch}.png',
 			np.transpose(torchvision.utils.make_grid(res_imgs, padding=5, normalize=True).cpu(),(1,2,0))
 		)
 
@@ -204,16 +206,16 @@ def get_mnist_loaders(batch_size, test_batch_size=None, cutoff=1, flatten=True):
 	if test_batch_size is None: test_batch_size = batch_size * 2
 
 	x_train, y_train = load_mnist_imgs_and_labels(
-		'../datasets/mnist-digits/train-images-idx3-ubyte',
-		'../datasets/mnist-digits/train-labels-idx1-ubyte'
+		'../../datasets/mnist-digits/train-images-idx3-ubyte',
+		'../../datasets/mnist-digits/train-labels-idx1-ubyte'
 	)
 
 	x_train, x_val = np.split(x_train, [int(len(x_train) * cutoff)])
 	y_train, y_val = np.split(y_train, [int(len(y_train) * cutoff)])
 
 	x_test, y_test = load_mnist_imgs_and_labels(
-		'../datasets/mnist-digits/t10k-images-idx3-ubyte',
-		'../datasets/mnist-digits/t10k-labels-idx1-ubyte'
+		'../../datasets/mnist-digits/t10k-images-idx3-ubyte',
+		'../../datasets/mnist-digits/t10k-labels-idx1-ubyte'
 	)
 
 	if not flatten:
@@ -247,8 +249,8 @@ def get_cifar10_loaders(batch_size, test_batch_size=None, image_size=32):
 		torchvision.transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
 	])
 
-	train_ds = torchvision.datasets.CIFAR10(root='../datasets/cifar-10-py/', train=True, download=True, transform=transform)
-	test_ds = torchvision.datasets.CIFAR10(root='../datasets/cifar-10-py/', train=False, download=True, transform=transform)
+	train_ds = torchvision.datasets.CIFAR10(root='../../datasets/cifar-10-py/', train=True, download=True, transform=transform)
+	test_ds = torchvision.datasets.CIFAR10(root='../../datasets/cifar-10-py/', train=False, download=True, transform=transform)
 
 	train_dl = torch.utils.data.DataLoader(train_ds, batch_size=batch_size, shuffle=True, num_workers=2)
 	test_dl = torch.utils.data.DataLoader(test_ds, batch_size=test_batch_size, shuffle=False, num_workers=2)
@@ -256,7 +258,7 @@ def get_cifar10_loaders(batch_size, test_batch_size=None, image_size=32):
 	return train_dl, test_dl
 
 
-def get_celeba_loader(batch_size, image_size=64):
+def get_celeba_loader(batch_size, image_size=64, root='../../datasets/celeba'):
     transform = torchvision.transforms.Compose([
         torchvision.transforms.Resize(image_size),
         torchvision.transforms.CenterCrop(image_size),
@@ -264,7 +266,7 @@ def get_celeba_loader(batch_size, image_size=64):
         torchvision.transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
     ])
 
-    ds = torchvision.datasets.ImageFolder(root='../datasets/celeba', transform=transform)
+    ds = torchvision.datasets.ImageFolder(root=root, transform=transform)
     dl = torch.utils.data.DataLoader(ds, batch_size=batch_size, shuffle=True, num_workers=2)
 
     return dl

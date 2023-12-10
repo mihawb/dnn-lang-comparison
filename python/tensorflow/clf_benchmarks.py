@@ -1,5 +1,5 @@
 import tensorflow as tf
-from tf_funcs import get_cifar10_data, get_mnist_loaders, classifier_overlay, combine_model, FullyConnectedNet, SimpleConvNetBuilder, PerfCounterCallback, GeneratorBuilder, DiscriminatorBulider, get_celeba_loader, train_step
+from clf_funcs import get_cifar10_data, get_mnist_loaders, classifier_overlay, combine_model, FullyConnectedNet, SimpleConvNetBuilder, PerfCounterCallback, GeneratorBuilder, DiscriminatorBulider, get_celeba_loader, train_step
 import pandas as pd
 import multiprocessing as mp
 import numpy as np
@@ -98,7 +98,7 @@ def train_single_model(model_name, config, telemetry, child_conn):
 	# epoch and elapsed_time handeled by PerfCounterCallback
 
 	child_conn.send(telemetry)
-	pd.DataFrame(telemetry).to_csv(f'../results/tensorflow.csv', index=False)
+	pd.DataFrame(telemetry).to_csv(f'../../results/tensorflow.csv', index=False)
 
 	del model, train_ds, test_ds, train_history
 
@@ -107,7 +107,7 @@ def train_dcgan(config, telemetry, child_conn):
 	print('Benchmarks for DCGAN begin')
 	setup()
 
-	celeba_ds = get_celeba_loader(config['batch_size'])
+	celeba_ds = get_celeba_loader(config['batch_size'], root='../../datasets/celeba_trunc')
 	modelG = GeneratorBuilder()
 	modelD = DiscriminatorBulider()
 	optG = tf.keras.optimizers.Adam(config['lr'])
@@ -181,7 +181,7 @@ def train_dcgan(config, telemetry, child_conn):
 	telemetry['elapsed_time'].append(end - start)
 
 	child_conn.send(telemetry)
-	pd.DataFrame(telemetry).to_csv(f'../results/tensorflow.csv', index=False)
+	pd.DataFrame(telemetry).to_csv(f'../../results/tensorflow.csv', index=False)
 
 	del modelG, modelD, celeba_ds
 
@@ -213,11 +213,11 @@ if __name__ == '__main__':
 		'latent_vec_size': 100
 	}
 		
-	for model_name in ['FullyConnectedNet', 'SimpleConvNet', 'ResNet-50', 'DenseNet-121', 'MobileNet-v2', 'ConvNeXt-Small']:
-		p = mp.Process(target=train_single_model, args=(model_name, config, telemetry, child_conn))
-		p.start()
-		telemetry = parent_conn.recv()
-		p.join()
+	# for model_name in ['FullyConnectedNet', 'SimpleConvNet', 'ResNet-50', 'DenseNet-121', 'MobileNet-v2', 'ConvNeXt-Small']:
+		# p = mp.Process(target=train_single_model, args=(model_name, config, telemetry, child_conn))
+		# p.start()
+		# telemetry = parent_conn.recv()
+		# p.join()
 
 	p = mp.Process(target=train_dcgan, args=(config, telemetry, child_conn))
 	p.start()

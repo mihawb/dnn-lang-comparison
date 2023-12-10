@@ -1,5 +1,8 @@
-import tensorflow as tf
+import sys
+sys.path.append('..')
 from load_datasets import load_mnist_imgs_and_labels
+
+import tensorflow as tf
 from time import perf_counter_ns
 import pathlib
 
@@ -18,13 +21,13 @@ def get_mnist_loaders(batch_size, test_batch_size=None, flatten=True):
 	if not test_batch_size: test_batch_size = batch_size * 2
 
 	x_train, y_train = load_mnist_imgs_and_labels(
-		'../datasets/mnist-digits/train-images-idx3-ubyte',
-		'../datasets/mnist-digits/train-labels-idx1-ubyte'
+		'../../datasets/mnist-digits/train-images-idx3-ubyte',
+		'../../datasets/mnist-digits/train-labels-idx1-ubyte'
 	)
 
 	x_test, y_test = load_mnist_imgs_and_labels(
-		'../datasets/mnist-digits/t10k-images-idx3-ubyte',
-		'../datasets/mnist-digits/t10k-labels-idx1-ubyte'
+		'../../datasets/mnist-digits/t10k-images-idx3-ubyte',
+		'../../datasets/mnist-digits/t10k-labels-idx1-ubyte'
 	)
 
 	if not flatten:
@@ -42,9 +45,9 @@ def get_mnist_loaders(batch_size, test_batch_size=None, flatten=True):
 	return train_ds, test_ds
 
 
-def get_celeba_loader(batch_size, image_size=64):
+def get_celeba_loader(batch_size, image_size=64, root='../../datasets/celeba'):
     return tf.keras.utils.image_dataset_from_directory(
-        pathlib.Path('../datasets/celeba'),
+        pathlib.Path(root),
 		shuffle=True,
         label_mode=None,
         seed=123,
@@ -153,7 +156,8 @@ def SimpleConvNetBuilder(num_classes=10):
 
 def GeneratorBuilder(latent_vec_size=100, feat_map_size=64):
 	gen = tf.keras.Sequential()
-	gen.add(tf.keras.layers.Dense(4*4*feat_map_size*8, use_bias=False, input_shape=(latent_vec_size,)))
+	gen.add(tf.keras.layers.Dense(4*4*feat_map_size*8, use_bias=False, input_shape=(latent_vec_size,),
+		kernel_initializer=tf.keras.initializers.RandomNormal(0.0, 0.02)))
 	gen.add(tf.keras.layers.ReLU())
 	gen.add(tf.keras.layers.Reshape((4,4,feat_map_size*8)))
 	assert gen.output_shape == (None, 4,4,feat_map_size*8)
@@ -163,22 +167,29 @@ def GeneratorBuilder(latent_vec_size=100, feat_map_size=64):
 	# gen.add(tf.keras.layers.ReLU())
 	# assert gen.output_shape == (None, 4, 4, feat_map_size * 8)
 
-	gen.add(tf.keras.layers.Conv2DTranspose(feat_map_size * 4, (4,4), (2,2), padding="same", use_bias=False))
-	gen.add(tf.keras.layers.BatchNormalization())
+	gen.add(tf.keras.layers.Conv2DTranspose(feat_map_size * 4, (4,4), (2,2), padding="same", use_bias=False,
+		kernel_initializer=tf.keras.initializers.RandomNormal(0.0, 0.02)))
+	gen.add(tf.keras.layers.BatchNormalization(gamma_initializer=tf.keras.initializers.RandomNormal(1.0, 0.02),
+		beta_initializer=tf.keras.initializers.Zeros()))
 	gen.add(tf.keras.layers.ReLU())
 	assert gen.output_shape == (None, 8, 8, feat_map_size * 4)
 
-	gen.add(tf.keras.layers.Conv2DTranspose(feat_map_size * 2, (4,4), (2,2), padding="same", use_bias=False))
-	gen.add(tf.keras.layers.BatchNormalization())
+	gen.add(tf.keras.layers.Conv2DTranspose(feat_map_size * 2, (4,4), (2,2), padding="same", use_bias=False,
+		kernel_initializer=tf.keras.initializers.RandomNormal(0.0, 0.02)))
+	gen.add(tf.keras.layers.BatchNormalization(gamma_initializer=tf.keras.initializers.RandomNormal(1.0, 0.02),
+		beta_initializer=tf.keras.initializers.Zeros()))
 	gen.add(tf.keras.layers.ReLU())
 	assert gen.output_shape == (None, 16, 16, feat_map_size * 2)
 
-	gen.add(tf.keras.layers.Conv2DTranspose(feat_map_size, (4,4), (2,2), padding="same", use_bias=False))
-	gen.add(tf.keras.layers.BatchNormalization())
+	gen.add(tf.keras.layers.Conv2DTranspose(feat_map_size, (4,4), (2,2), padding="same", use_bias=False,
+		kernel_initializer=tf.keras.initializers.RandomNormal(0.0, 0.02)))
+	gen.add(tf.keras.layers.BatchNormalization(gamma_initializer=tf.keras.initializers.RandomNormal(1.0, 0.02),
+		beta_initializer=tf.keras.initializers.Zeros()))
 	gen.add(tf.keras.layers.ReLU())
 	assert gen.output_shape == (None, 32, 32, feat_map_size)
 
-	gen.add(tf.keras.layers.Conv2DTranspose(3, (4,4), (2,2), padding="same", use_bias=False, activation='tanh'))
+	gen.add(tf.keras.layers.Conv2DTranspose(3, (4,4), (2,2), padding="same", use_bias=False, activation='tanh',
+		kernel_initializer=tf.keras.initializers.RandomNormal(0.0, 0.02)))
 	assert gen.output_shape == (None, 64, 64, 3)
 
 	return gen
@@ -187,20 +198,26 @@ def GeneratorBuilder(latent_vec_size=100, feat_map_size=64):
 def DiscriminatorBulider(feat_map_size=64):
 	disc = tf.keras.Sequential()
 
-	disc.add(tf.keras.layers.Conv2D(feat_map_size, (4,4), (2,2), padding="same", use_bias=False, input_shape=[64,64,3]))
+	disc.add(tf.keras.layers.Conv2D(feat_map_size, (4,4), (2,2), padding="same", use_bias=False, input_shape=(64,64,3),
+		kernel_initializer=tf.keras.initializers.RandomNormal(0.0, 0.02)))
 	disc.add(tf.keras.layers.LeakyReLU(0.2))
 
-	disc.add(tf.keras.layers.Conv2D(feat_map_size * 2, (4,4), (2,2), padding="same", use_bias=False))
-	disc.add(tf.keras.layers.BatchNormalization())
+	disc.add(tf.keras.layers.Conv2D(feat_map_size * 2, (4,4), (2,2), padding="same", use_bias=False,
+		kernel_initializer=tf.keras.initializers.RandomNormal(0.0, 0.02)))
+	disc.add(tf.keras.layers.BatchNormalization(gamma_initializer=tf.keras.initializers.RandomNormal(1.0, 0.02),
+		beta_initializer=tf.keras.initializers.Zeros()))
 	disc.add(tf.keras.layers.LeakyReLU(0.2))
 
-	disc.add(tf.keras.layers.Conv2D(feat_map_size * 4, (4,4), (2,2), padding="same", use_bias=False))
-	disc.add(tf.keras.layers.BatchNormalization())
+	disc.add(tf.keras.layers.Conv2D(feat_map_size * 4, (4,4), (2,2), padding="same", use_bias=False,
+		kernel_initializer=tf.keras.initializers.RandomNormal(0.0, 0.02)))
+	disc.add(tf.keras.layers.BatchNormalization(gamma_initializer=tf.keras.initializers.RandomNormal(1.0, 0.02),
+		beta_initializer=tf.keras.initializers.Zeros()))
 	disc.add(tf.keras.layers.LeakyReLU(0.2))
 
-	disc.add(tf.keras.layers.Conv2D(feat_map_size * 8, (4,4), (2,2), padding="same", use_bias=False))
+	disc.add(tf.keras.layers.Conv2D(feat_map_size * 8, (4,4), (2,2), padding="same", use_bias=False,
+		kernel_initializer=tf.keras.initializers.RandomNormal(0.0, 0.02)))
 	disc.add(tf.keras.layers.Flatten())
-	disc.add(tf.keras.layers.Dense(1, activation="sigmoid"))
+	disc.add(tf.keras.layers.Dense(1, activation="sigmoid", use_bias=False))
 
 	return disc
 
