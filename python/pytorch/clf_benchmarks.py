@@ -1,7 +1,7 @@
 import torch
 import torch.nn.functional as F
 import torch.nn as nn
-from torchvision.models import resnet50, densenet121, mobilenet_v2, convnext_small
+from torchvision.models import resnet50, densenet121, mobilenet_v2, convnext_tiny
 import torch.optim as optim
 from clf_funcs import fit, test, get_cifar10_loaders, get_mnist_loaders, get_celeba_loader, FullyConnectedNet, SimpleConvNet, fit_dcgan, Generator, Discriminator, dcgan_weights_init, generate
 import pandas as pd
@@ -23,8 +23,8 @@ def env_builder(name: str, num_classes: int, batch_size: int, test_batch_size: i
 	elif name == 'MobileNet-v2':
 		model = mobilenet_v2()
 		model.classifier[1] = nn.Linear(in_features=1280, out_features=num_classes, bias=True)
-	elif name == 'ConvNeXt-Small':
-		model = convnext_small()
+	elif name == 'ConvNeXt-Tiny':
+		model = convnext_tiny()
 		model.classifier[2] = nn.Linear(in_features=768, out_features=num_classes, bias=True)
 	else:
 		raise ValueError('Invalid model name')
@@ -67,7 +67,8 @@ if __name__ == '__main__':
 	device = torch.device("cuda" if use_cuda else "cpu")
 	print(f'CUDA enabled: {use_cuda}')
 
-	for model_name in ['FullyConnectedNet', 'SimpleConvNet', 'ResNet-50', 'DenseNet-121', 'MobileNet-v2', 'ConvNeXt-Small']:
+	# for model_name in ['FullyConnectedNet', 'SimpleConvNet', 'ResNet-50', 'DenseNet-121', 'MobileNet-v2', 'ConvNeXt-Small']:
+	for model_name in ['ConvNeXt-Tiny']:
 		print(f'Benchmarks for {model_name} begin')
 
 		model, train_dl, test_dl, loss_func = env_builder(model_name, num_classes, batch_size, test_batch_size)

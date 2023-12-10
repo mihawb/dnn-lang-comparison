@@ -9,6 +9,7 @@
 #include <fstream>
 #include <memory>
 #include <vector>
+#include <chrono>
 
 #include "models.h"
 #include "cifar10.h"
@@ -83,6 +84,7 @@ int main()
         /*batch_size=*/test_batch_size);
 
     //===================================================================FullyConnectedNet
+    std::cout << "Benchmarks for FullyConnectedNet begin." << std::endl;
     // new net via reference semantics
     auto model_fcnet = std::make_shared<FullyConnectedNet>();
     model_fcnet->to(device);
@@ -133,31 +135,39 @@ int main()
     }
 
     model_fcnet->eval();
+    int batch_index = 0;
+    double running_loss = 0.0;
+    int corrects = 0;
+    int num_samples = 0;
+
+    cudaEventRecord(start);
     for (auto &batch : *test_dl_mnist)
     {
-        cudaEventRecord(start);
-
         torch::Tensor batch_data = batch.data.to(device);
         torch::Tensor batch_target = batch.target.to(device);
 
         torch::Tensor outputs = model_fcnet->forward(batch_data);
         torch::Tensor loss = torch::nll_loss(outputs, batch_target);
         torch::Tensor predictions = std::get<1>(torch::max(outputs, 1));
-        int corrects = torch::sum(predictions == batch_target).item<int>();
 
-        cudaEventRecord(stop);
-        cudaEventSynchronize(stop);
-        cudaEventElapsedTime(&milliseconds, start, stop);
-
-        std::cout << "Eval time: " << milliseconds << " ms" << std::endl;
-        results_file << "FullyConnectedNet,inference,"
-                     << 1 << "," << loss.item<float>() << ","
-                     << (float)corrects / (float)batch.data.size(0) << ","
-                     << milliseconds << std::endl;
-        break;
+        batch_index++;
+        corrects += torch::sum(predictions == batch_target).item<int>();
+        num_samples += batch.data.size(0);
+        running_loss += loss.item<double>();
     }
 
+    cudaEventRecord(stop);
+    cudaEventSynchronize(stop);
+    cudaEventElapsedTime(&milliseconds, start, stop);
+
+    std::cout << "Eval time: " << milliseconds << " ms" << std::endl;
+    results_file << "FullyConnectedNet,inference,"
+                 << 1 << "," << running_loss / (double)batch_index << ","
+                 << (float)corrects / (float)num_samples << ","
+                 << milliseconds << std::endl;
+
     //=======================================================================SimpleConvNet
+    std::cout << "Benchmarks for SimpleConvNet begin." << std::endl;
     auto model_scvnet = std::make_shared<SimpleConvNet>();
     model_scvnet->to(device);
     torch::optim::SGD optimizer_scvnet(model_scvnet->parameters(), /*lr=*/lr);
@@ -206,10 +216,14 @@ int main()
     }
 
     model_scvnet->eval();
+    batch_index = 0;
+    running_loss = 0.0;
+    corrects = 0;
+    num_samples = 0;
+
+    cudaEventRecord(start);
     for (auto &batch : *test_dl_mnist)
     {
-        cudaEventRecord(start);
-
         torch::Tensor batch_data = batch.data.to(device);
         torch::Tensor batch_target = batch.target.to(device);
 
@@ -218,18 +232,24 @@ int main()
         torch::Tensor predictions = std::get<1>(torch::max(outputs, 1));
         int corrects = torch::sum(predictions == batch_target).item<int>();
 
-        cudaEventRecord(stop);
-        cudaEventSynchronize(stop);
-        cudaEventElapsedTime(&milliseconds, start, stop);
-
-        results_file << "SimpleConvNet,inference,"
-                     << 1 << "," << loss.item<float>() << ","
-                     << (float)corrects / (float)batch.data.size(0) << ","
-                     << milliseconds << std::endl;
-        break;
+        batch_index++;
+        corrects += torch::sum(predictions == batch_target).item<int>();
+        num_samples += batch.data.size(0);
+        running_loss += loss.item<double>();
     }
 
+    cudaEventRecord(stop);
+    cudaEventSynchronize(stop);
+    cudaEventElapsedTime(&milliseconds, start, stop);
+
+    std::cout << "Eval time: " << milliseconds << " ms" << std::endl;
+    results_file << "SimpleConvNet,inference,"
+                 << 1 << "," << running_loss / (double)batch_index << ","
+                 << (float)corrects / (float)num_samples << ","
+                 << milliseconds << std::endl;
+
     //===========================================================================ResNet-50
+    std::cout << "Benchmarks for native ResNet-50 begin." << std::endl;
     auto model_resnet50_native = std::make_shared<ResNet50>();
     model_resnet50_native->to(device);
     torch::optim::SGD optimizer_resnet50_native(model_resnet50_native->parameters(), /*lr=*/lr);
@@ -278,10 +298,14 @@ int main()
     }
 
     model_resnet50_native->eval();
+    batch_index = 0;
+    running_loss = 0.0;
+    corrects = 0;
+    num_samples = 0;
+
+    cudaEventRecord(start);
     for (auto &batch : *test_dl_cifar10)
     {
-        cudaEventRecord(start);
-
         torch::Tensor batch_data = batch.data.to(device);
         torch::Tensor batch_target = batch.target.to(device);
 
@@ -290,19 +314,24 @@ int main()
         torch::Tensor predictions = std::get<1>(torch::max(outputs, 1));
         int corrects = torch::sum(predictions == batch_target).item<int>();
 
-        cudaEventRecord(stop);
-        cudaEventSynchronize(stop);
-        cudaEventElapsedTime(&milliseconds, start, stop);
-
-        results_file << "NativeResNet50,inference,"
-                     << 1 << "," << loss.item<float>() << ","
-                     << (float)corrects / (float)batch.data.size(0) << ","
-                     << milliseconds << std::endl;
-        break;
+        batch_index++;
+        corrects += torch::sum(predictions == batch_target).item<int>();
+        num_samples += batch.data.size(0);
+        running_loss += loss.item<double>();
     }
 
+    cudaEventRecord(stop);
+    cudaEventSynchronize(stop);
+    cudaEventElapsedTime(&milliseconds, start, stop);
+    
+    std::cout << "Eval time: " << milliseconds << " ms" << std::endl;
+    results_file << "NativeResNet50,inference,"
+                 << 1 << "," << running_loss / (double)batch_index << ","
+                 << (float)corrects / (float)num_samples << ","
+                 << milliseconds << std::endl;
+
     //===========================================================serailized PyTorch models
-    std::string models[] = {"ResNet-50", "DenseNet-121", "MobileNet-v2", "ConvNeXt-Small"};
+    std::string models[] = {"ResNet-50", "DenseNet-121", "MobileNet-v2", "ConvNeXt-Tiny"};
 
     for (std::string model_name : models)
     {
@@ -372,10 +401,14 @@ int main()
         }
 
         model->eval();
+        batch_index = 0;
+        running_loss = 0.0;
+        corrects = 0;
+        num_samples = 0;
+
+        cudaEventRecord(start);
         for (auto &batch : *test_dl_cifar10)
         {
-            cudaEventRecord(start);
-
             torch::Tensor batch_data = batch.data.to(device);
             torch::Tensor batch_target = batch.target.to(device);
 
@@ -386,20 +419,32 @@ int main()
             torch::Tensor predictions = std::get<1>(torch::max(outputs, 1));
             int corrects = torch::sum(predictions == batch_target).item<int>();
 
-            cudaEventRecord(stop);
-            cudaEventSynchronize(stop);
-            cudaEventElapsedTime(&milliseconds, start, stop);
-
-            results_file << model_name << ",inference,"
-                         << 1 << "," << loss.item<float>() << ","
-                         << (float)corrects / (float)batch.data.size(0) << ","
-                         << milliseconds << std::endl;
-            break;
+            batch_index++;
+            corrects += torch::sum(predictions == batch_target).item<int>();
+            num_samples += batch.data.size(0);
+            running_loss += loss.item<double>();
         }
+
+        cudaEventRecord(stop);
+        cudaEventSynchronize(stop);
+        cudaEventElapsedTime(&milliseconds, start, stop);
+
+        std::cout << "Eval time: " << milliseconds << " ms" << std::endl;
+        results_file << model_name << ",inference,"
+                     << 1 << "," << running_loss / (double)batch_index << ","
+                     << (float)corrects / (float)num_samples << ","
+                     << milliseconds << std::endl;
     }
 
     //===============================================================================DCGAN
+    std::chrono::steady_clock::time_point start_read = std::chrono::steady_clock::now();
     auto celeba = CELEBA{"../datasets/celeba_trunc", batch_size};
+    std::chrono::steady_clock::time_point end_read = std::chrono::steady_clock::now();
+
+    results_file << "CELEBA,read,1,-1,-1,"
+        // µs for convenience as CUDA events are measured this way as well
+        << std::chrono::duration_cast<std::chrono::microseconds>(end_read - start_read).count()
+        << std::endl;
 
     std::cout << "Benchmarks for DCGAN begin." << std::endl;
     int latent_vec_size = 100;
@@ -512,6 +557,7 @@ int main()
     cudaEventSynchronize(stop);
     cudaEventElapsedTime(&milliseconds, start, stop);
 
+    std::cout << "Generation time: " << milliseconds << " ms" << std::endl;
     results_file << "DCGAN,generation,1,-1,-1," << milliseconds << std::endl;
 
     results_file.close();
