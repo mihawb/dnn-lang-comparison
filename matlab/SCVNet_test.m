@@ -47,8 +47,16 @@ options = trainingOptions(          ...
 
 layers = [
     imageInputLayer([28 28 1])
-    
-    fullyConnectedLayer(800)
+
+	convolution2dLayer(5, 16, 'Stride', 1, 'Padding', 2)
+	reluLayer
+	maxPooling2dLayer(2)
+
+	convolution2dLayer(5, 32, 'Stride', 1, 'Padding', 2)
+	reluLayer
+	maxPooling2dLayer(2)
+
+    fullyConnectedLayer(500)
     reluLayer
 
     fullyConnectedLayer(10)
@@ -61,7 +69,7 @@ layers = [
 net = trainNetwork(x_train, y_train, layers, options);
 
 results = struct2table(training_state);
-writetable(results, "../results/matlab_FullyConnectedNet.csv");
+writetable(results, "../results/matlab_SimpleConvNet.csv");
 
 %% testing accuracy
 
@@ -69,6 +77,6 @@ inference_time = timeit(@() classify(net, x_test, MiniBatchSize=batch_size*2));
 outputs = classify(net, x_test, MiniBatchSize=batch_size*2);
 test_acc = mean(outputs == y_test);
 
-fhand = fopen("../results/matlab_FullyConnectedNet.csv", "a+");
+fhand = fopen("../results/matlab_SimpleConvNet.csv", "a+");
 fprintf(fhand, "1,1,%f,,,,,,%f,,inference", inference_time,test_acc);
 fclose(fhand);
