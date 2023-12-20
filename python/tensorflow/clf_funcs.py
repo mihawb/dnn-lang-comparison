@@ -2,9 +2,108 @@ import sys
 sys.path.append('..')
 from load_datasets import load_mnist_imgs_and_labels
 
-import tensorflow as tf
-from time import perf_counter_ns
 import pathlib
+import pandas as pd
+from time import perf_counter_ns
+
+import tensorflow as tf
+
+
+def setup():
+	gpus = tf.config.experimental.list_physical_devices('GPU')
+	if gpus:
+		try:
+			for gpu in gpus:
+				tf.config.experimental.set_memory_growth(gpu, True)
+		except RuntimeError as e:
+			print(e)
+
+
+def env_builder(name, config): 
+	if name == 'FullyConnectedNet':
+		model = FullyConnectedNet()
+		train_ds, test_ds = get_mnist_loaders(config['batch_size'], config['test_batch_size'])
+	elif name == 'SimpleConvNet':
+		model = SimpleConvNetBuilder()
+		train_ds, test_ds = get_mnist_loaders(config['batch_size'], config['test_batch_size'], flatten=False)
+	elif name == 'ResNet-50':
+		model = combine_model(config['inputs'], tf.keras.applications.ResNet50, classifier_overlay)
+		train_ds, test_ds = get_cifar10_data(tf.keras.applications.resnet50.preprocess_input)
+	elif name == 'DenseNet-121':
+		model = combine_model(config['inputs'], tf.keras.applications.DenseNet121, classifier_overlay)
+		train_ds, test_ds = get_cifar10_data(tf.keras.applications.densenet.preprocess_input)
+	elif name == 'MobileNet-v2':
+		model = combine_model(config['inputs'], tf.keras.applications.MobileNetV2, classifier_overlay)
+		train_ds, test_ds = get_cifar10_data(tf.keras.applications.mobilenet_v2.preprocess_input)
+	elif name == 'ConvNeXt-Tiny':
+		model = combine_model(config['inputs'], tf.keras.applications.ConvNeXtTiny, classifier_overlay)
+		train_ds, test_ds = get_cifar10_data(tf.keras.applications.convnext.preprocess_input)
+	else:
+		raise ValueError('Invalid model name')
+
+	return model, train_ds, test_ds
+
+
+def train_single_model(model_name, config, telemetry, child_conn):
+	print(f'Benchmarks for {model_name} begin')
+	setup()
+
+	model, train_ds, test_ds = env_builder(model_name, config)
+	optimizer = tf.keras.optimizers.SGD(learning_rate=config['lr'], momentum=config['momentum'])
+	model.compile(optimizer=optimizer, loss=config['loss_func'], metrics=['accuracy'])
+	perfcounter = PerfCounterCallback(telemetry)
+
+
+	# training 
+	if isinstance(train_ds, tuple):
+		train_history = model.fit(
+			train_ds[0], train_ds[1],
+			batch_size=config['batch_size'],
+			validation_data=test_ds,
+			validation_batch_size=config['test_batch_size'],
+			epochs=config['epochs'],
+			shuffle=True,
+			callbacks=[perfcounter]
+		)
+	else:
+		train_history = model.fit(
+			train_ds,
+			validation_data=test_ds,
+			validation_batch_size=config['test_batch_size'],
+			epochs=config['epochs'],
+			callbacks=[perfcounter]
+		)
+
+	telemetry['model_name'].extend([model_name] * config['epochs'])
+	telemetry['type'].extend(['training'] * config['epochs'])
+	telemetry['loss'].extend(train_history.history['loss'])
+	telemetry['performance'].extend(train_history.history['val_accuracy'])
+	# epoch and elapsed_time handeled by PerfCounterCallback
+
+	# inference
+	if isinstance(test_ds, tuple):
+		eval_history = model.evaluate(
+			test_ds[0], test_ds[1],
+			batch_size=config['test_batch_size'],
+			callbacks=[perfcounter]
+		)
+	else:
+		eval_history = model.evaluate(
+			test_ds,
+			batch_size=config['test_batch_size'],
+			callbacks=[perfcounter]
+		)
+
+	telemetry['model_name'].append(model_name)
+	telemetry['type'].append('inference')
+	telemetry['loss'].append(eval_history[0])
+	telemetry['performance'].append(eval_history[1])
+	# epoch and elapsed_time handeled by PerfCounterCallback
+
+	child_conn.send(telemetry)
+	pd.DataFrame(telemetry).to_csv(config['results_filename'], index=False)
+
+	del model, train_ds, test_ds, train_history
 
 
 def get_cifar10_data(preprocess=None):
@@ -43,17 +142,6 @@ def get_mnist_loaders(batch_size, test_batch_size=None, flatten=True):
 	test_ds = test_ds.batch(test_batch_size)
 
 	return train_ds, test_ds
-
-
-def get_celeba_loader(batch_size, image_size=64, root='../../datasets/celeba'):
-    return tf.keras.utils.image_dataset_from_directory(
-        pathlib.Path(root),
-		shuffle=True,
-        label_mode=None,
-        seed=123,
-        image_size=(image_size, image_size),
-        batch_size=batch_size
-	)
 
 
 def classifier_overlay(inputs):
@@ -152,104 +240,3 @@ def SimpleConvNetBuilder(num_classes=10):
 		tf.keras.layers.Dense(num_classes, activation='softmax'),
 	]
 	return tf.keras.Sequential(layers)
-
-
-def GeneratorBuilder(latent_vec_size=100, feat_map_size=64):
-	gen = tf.keras.Sequential()
-	gen.add(tf.keras.layers.Dense(4*4*feat_map_size*8, use_bias=False, input_shape=(latent_vec_size,),
-		kernel_initializer=tf.keras.initializers.RandomNormal(0.0, 0.02)))
-	gen.add(tf.keras.layers.ReLU())
-	gen.add(tf.keras.layers.Reshape((4,4,feat_map_size*8)))
-	assert gen.output_shape == (None, 4,4,feat_map_size*8)
-
-	# gen.add(tf.keras.layers.Conv2DTranspose(feat_map_size * 8, (4,4), (1,1), padding="same", use_bias=False))
-	# gen.add(tf.keras.layers.BatchNormalization())
-	# gen.add(tf.keras.layers.ReLU())
-	# assert gen.output_shape == (None, 4, 4, feat_map_size * 8)
-
-	gen.add(tf.keras.layers.Conv2DTranspose(feat_map_size * 4, (4,4), (2,2), padding="same", use_bias=False,
-		kernel_initializer=tf.keras.initializers.RandomNormal(0.0, 0.02)))
-	gen.add(tf.keras.layers.BatchNormalization(gamma_initializer=tf.keras.initializers.RandomNormal(1.0, 0.02),
-		beta_initializer=tf.keras.initializers.Zeros()))
-	gen.add(tf.keras.layers.ReLU())
-	assert gen.output_shape == (None, 8, 8, feat_map_size * 4)
-
-	gen.add(tf.keras.layers.Conv2DTranspose(feat_map_size * 2, (4,4), (2,2), padding="same", use_bias=False,
-		kernel_initializer=tf.keras.initializers.RandomNormal(0.0, 0.02)))
-	gen.add(tf.keras.layers.BatchNormalization(gamma_initializer=tf.keras.initializers.RandomNormal(1.0, 0.02),
-		beta_initializer=tf.keras.initializers.Zeros()))
-	gen.add(tf.keras.layers.ReLU())
-	assert gen.output_shape == (None, 16, 16, feat_map_size * 2)
-
-	gen.add(tf.keras.layers.Conv2DTranspose(feat_map_size, (4,4), (2,2), padding="same", use_bias=False,
-		kernel_initializer=tf.keras.initializers.RandomNormal(0.0, 0.02)))
-	gen.add(tf.keras.layers.BatchNormalization(gamma_initializer=tf.keras.initializers.RandomNormal(1.0, 0.02),
-		beta_initializer=tf.keras.initializers.Zeros()))
-	gen.add(tf.keras.layers.ReLU())
-	assert gen.output_shape == (None, 32, 32, feat_map_size)
-
-	gen.add(tf.keras.layers.Conv2DTranspose(3, (4,4), (2,2), padding="same", use_bias=False, activation='tanh',
-		kernel_initializer=tf.keras.initializers.RandomNormal(0.0, 0.02)))
-	assert gen.output_shape == (None, 64, 64, 3)
-
-	return gen
-
-
-def DiscriminatorBulider(feat_map_size=64):
-	disc = tf.keras.Sequential()
-
-	disc.add(tf.keras.layers.Conv2D(feat_map_size, (4,4), (2,2), padding="same", use_bias=False, input_shape=(64,64,3),
-		kernel_initializer=tf.keras.initializers.RandomNormal(0.0, 0.02)))
-	disc.add(tf.keras.layers.LeakyReLU(0.2))
-
-	disc.add(tf.keras.layers.Conv2D(feat_map_size * 2, (4,4), (2,2), padding="same", use_bias=False,
-		kernel_initializer=tf.keras.initializers.RandomNormal(0.0, 0.02)))
-	disc.add(tf.keras.layers.BatchNormalization(gamma_initializer=tf.keras.initializers.RandomNormal(1.0, 0.02),
-		beta_initializer=tf.keras.initializers.Zeros()))
-	disc.add(tf.keras.layers.LeakyReLU(0.2))
-
-	disc.add(tf.keras.layers.Conv2D(feat_map_size * 4, (4,4), (2,2), padding="same", use_bias=False,
-		kernel_initializer=tf.keras.initializers.RandomNormal(0.0, 0.02)))
-	disc.add(tf.keras.layers.BatchNormalization(gamma_initializer=tf.keras.initializers.RandomNormal(1.0, 0.02),
-		beta_initializer=tf.keras.initializers.Zeros()))
-	disc.add(tf.keras.layers.LeakyReLU(0.2))
-
-	disc.add(tf.keras.layers.Conv2D(feat_map_size * 8, (4,4), (2,2), padding="same", use_bias=False,
-		kernel_initializer=tf.keras.initializers.RandomNormal(0.0, 0.02)))
-	disc.add(tf.keras.layers.Flatten())
-	disc.add(tf.keras.layers.Dense(1, activation="sigmoid", use_bias=False))
-
-	return disc
-
-
-# This annotation causes the function to be "compiled".
-@tf.function
-def train_step(modelG, modelD, optG, optD, imgs_batch, loss_func, latent_vec_size=100):
-	noise = tf.random.normal([imgs_batch.shape[0], latent_vec_size])
-
-	with tf.GradientTape() as gen_tape, tf.GradientTape() as disc_tape:
-		generated_images = modelG(noise, training=True)
-
-		real_output = modelD(imgs_batch, training=True)
-		fake_output = modelD(generated_images, training=True)
-		D_x = tf.reduce_mean(real_output)
-		D_G_z1 = tf.reduce_mean(fake_output)
-
-		# generator loss
-		gen_loss = loss_func(tf.ones_like(fake_output), fake_output)
-
-		# discrimanator loss
-		real_loss = loss_func(tf.ones_like(real_output), real_output)
-		fake_loss = loss_func(tf.zeros_like(fake_output), fake_output)
-		disc_loss = real_loss + fake_loss
-
-	gradients_of_generator = gen_tape.gradient(gen_loss, modelG.trainable_variables)
-	gradients_of_discriminator = disc_tape.gradient(disc_loss, modelD.trainable_variables)
-
-	optG.apply_gradients(zip(gradients_of_generator, modelG.trainable_variables))
-	optD.apply_gradients(zip(gradients_of_discriminator, modelD.trainable_variables))
-
-	fake_output_graded = modelD(generated_images)
-	D_G_z2 = tf.reduce_mean(fake_output_graded)
-
-	return gen_loss, disc_loss, D_x, D_G_z1, D_G_z2
