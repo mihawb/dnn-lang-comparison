@@ -3,7 +3,9 @@ import torch.nn.functional as F
 import torch.nn as nn
 from torchvision.models import resnet50, densenet121, mobilenet_v2, convnext_tiny
 import torch.optim as optim
-from clf_funcs import fit, test, get_cifar10_loaders, get_mnist_loaders, get_celeba_loader, FullyConnectedNet, SimpleConvNet, fit_dcgan, Generator, Discriminator, dcgan_weights_init, generate
+from clf_funcs import fit, test, get_cifar10_loaders, get_mnist_loaders, get_celeba_loader, FullyConnectedNet, SimpleConvNet
+from dcgan_funcs import fit_dcgan, generate, get_celeba_loader, Generator, Discriminator, dcgan_weights_init 
+from sodnet_funcs import fit_sodnet, test_sodnet, get_adam_loaders, SODNet
 import pandas as pd
 import numpy as np
 import time
@@ -61,14 +63,13 @@ if __name__ == '__main__':
 	log_interval = 200
 	start = torch.cuda.Event(enable_timing=True)
 	end = torch.cuda.Event(enable_timing=True)
-	results_filepath = f'../../results/pytorch.csv'
+	results_filepath = f'../../results/pytorch-{time.time_ns()}.csv'
 
 	use_cuda = torch.cuda.is_available()
 	device = torch.device("cuda" if use_cuda else "cpu")
 	print(f'CUDA enabled: {use_cuda}')
 
-	# for model_name in ['FullyConnectedNet', 'SimpleConvNet', 'ResNet-50', 'DenseNet-121', 'MobileNet-v2', 'ConvNeXt-Small']:
-	for model_name in ['ConvNeXt-Tiny']:
+	for model_name in ['FullyConnectedNet', 'SimpleConvNet', 'ResNet-50', 'DenseNet-121', 'MobileNet-v2', 'ConvNeXt-Tiny']:
 		print(f'Benchmarks for {model_name} begin')
 
 		model, train_dl, test_dl, loss_func = env_builder(model_name, num_classes, batch_size, test_batch_size)
