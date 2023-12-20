@@ -6,6 +6,7 @@ datasets/cifar-10-py/*
 datasets/cifar-10-matlab/*
 datasets/cifar-10-binary/*
 datasets/mnist-digits/*
+datasets/ADAM/*
 !datasets/mnist-digits/download_mnist.sh
 !datasets/cifar-10-binary/download_cifar10_bin.sh
 !datasets/*/.gitkeep
