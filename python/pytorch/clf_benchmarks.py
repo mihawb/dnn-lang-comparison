@@ -1,14 +1,16 @@
-import torch
-import torch.nn.functional as F
-import torch.nn as nn
-from torchvision.models import resnet50, densenet121, mobilenet_v2, convnext_tiny
-import torch.optim as optim
-from clf_funcs import fit, test, get_cifar10_loaders, get_mnist_loaders, get_celeba_loader, FullyConnectedNet, SimpleConvNet
-from dcgan_funcs import fit_dcgan, generate, get_celeba_loader, Generator, Discriminator, dcgan_weights_init 
 from sodnet_funcs import fit_sodnet, test_sodnet, get_adam_loaders, SODNet
-import pandas as pd
-import numpy as np
+from dcgan_funcs import fit_dcgan, generate, get_celeba_loader, Generator, Discriminator, dcgan_weights_init 
+from clf_funcs import fit, test, get_cifar10_loaders, get_mnist_loaders, get_celeba_loader, FullyConnectedNet, SimpleConvNet
+
 import time
+import numpy as np
+import pandas as pd
+
+import torch
+import torch.nn as nn
+import torch.optim as optim
+import torch.nn.functional as F
+from torchvision.models import resnet50, densenet121, mobilenet_v2, convnext_tiny
 
 
 def env_builder(name: str, num_classes: int, batch_size: int, test_batch_size: int): 

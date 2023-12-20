@@ -5,10 +5,10 @@ from load_datasets import load_mnist_imgs_and_labels
 import numpy as np
 
 import torch
+import torchvision
 import torch.nn as nn
 import torch.nn.functional as F
 from torch.utils.data import TensorDataset, DataLoader
-import torchvision
 
 
 def fit(model, device, loader, loss_func, epoch, optimizer, log_interval=100, silent=False):

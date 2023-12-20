@@ -5,8 +5,8 @@ from PIL import Image
 from sklearn.model_selection import train_test_split
 
 import torch
-import torch.nn as nn
 import torchvision
+import torch.nn as nn
 
 
 def fit_sodnet(model, device, loader, loss_func, optimizer):
