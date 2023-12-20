@@ -9,7 +9,7 @@ datasets/mnist-digits/*
 datasets/ADAM/*
 !datasets/mnist-digits/download_mnist.sh
 !datasets/cifar-10-binary/download_cifar10_bin.sh
-!datasets/*/.gitkeep
+!datasets/*/transform.*
 
 libtorch/libtorch-pre-cxx11
 libtorch/libtorch-cxx11
