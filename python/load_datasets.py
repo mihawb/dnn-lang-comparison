@@ -43,7 +43,7 @@ def load_cifar10_imgs_and_labels(pickle_path) -> tuple[np.ndarray, np.ndarray]:
 
 # ADAM
 
-def load_image(df, idx, root='../../datasets/ADAM'):
+def load_image(df, idx, root='../../datasets/ADAM/Training1200'):
 	image_name = df.loc[idx, 'imgName']
 	data_type = 'AMD' if image_name.startswith('A') else 'Non-AMD'
 	image_path = f'{root}/{data_type}/{image_name}'
