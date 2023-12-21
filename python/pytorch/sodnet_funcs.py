@@ -1,3 +1,7 @@
+import sys
+sys.path.append('..')
+from load_datasets import load_image
+
 import time
 import numpy as np
 import pandas as pd
@@ -89,6 +93,39 @@ def get_adam_loaders(batch_size, test_batch_size=None, cutoff=1, root='../../dat
 
 	train_ds = ADAMDataset(root, transform, fovea_df=train_df.reset_index())
 	test_ds = ADAMDataset(root, transform, fovea_df=test_df.reset_index())
+
+	train_dl = torch.utils.data.DataLoader(train_ds, batch_size=batch_size, shuffle=True, num_workers=2)
+	test_dl = torch.utils.data.DataLoader(test_ds, batch_size=test_batch_size, shuffle=False, num_workers=2)
+
+	return train_dl, test_dl
+
+
+def build_adam_dataset(df, image_size=256):
+	imgs, bboxes = [], []
+
+	for idx in df.index:
+		img, bbox = load_image(df, idx)
+
+		img_arr = np.array(img).transpose((2,0,1)).astype(np.float32) / 255 # uint8::max
+		imgs.append(img_arr)
+
+		bbox_arr = np.array(bbox).astype(np.float32) / image_size
+		bboxes.append(bbox_arr)
+
+	imgs = map(lambda x: torch.tensor(x, dtype=torch.float32), imgs)
+	bboxes = map(lambda x: torch.tensor(x, dtype=torch.float32), bboxes)
+
+	return [(i, b) for i, b in zip(imgs, bboxes)]
+
+
+def get_adam_loaders_from_memory(batch_size, test_batch_size=None, cutoff=1, root='../../datasets/ADAM/Training1200'):
+	if test_batch_size is None: test_batch_size = batch_size * 2
+
+	fovea_df = pd.read_csv(f'{root}/fovea_location.csv').drop(['ID'], axis=1)
+	train_df, test_df = train_test_split(fovea_df, test_size=1-cutoff, shuffle=True)
+
+	train_ds = build_adam_dataset(train_df)
+	test_ds = build_adam_dataset(test_df)
 
 	train_dl = torch.utils.data.DataLoader(train_ds, batch_size=batch_size, shuffle=True, num_workers=2)
 	test_dl = torch.utils.data.DataLoader(test_ds, batch_size=test_batch_size, shuffle=False, num_workers=2)
