@@ -15,6 +15,21 @@
 #include "cifar10.h"
 #include "celeba.h"
 
+int main()
+{
+    torch::Tensor x = torch::zeros({2, 3, 256, 256});
+
+    auto model_resblock = std::make_shared<ResBlock>(ResBlock(3, 16));
+    torch::Tensor y = model_resblock->forward(x);
+    std::cout << "resblock output size: " << y.sizes() << std::endl; // [2, 16, 256, 256] which is correct
+
+    auto model_sodnet = std::make_shared<SODNet>(SODNet(3, 16));
+    torch::Tensor z = model_sodnet->forward(x);
+    std::cout << "sodnet output size: " << z.sizes() << " and content: " << z << std::endl;
+
+    return 0;
+}
+
 int main_batch_loading_test()
 {
     int batch_size = 96;
@@ -28,7 +43,7 @@ int main_batch_loading_test()
     return 0;
 }
 
-int main()
+int main_main()
 {
     torch::Device device(torch::kCPU);
     if (torch::cuda::is_available())

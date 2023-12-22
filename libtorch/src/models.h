@@ -82,4 +82,22 @@ struct Discriminator : torch::nn::Module
     torch::nn::Sequential main{nullptr};
 };
 
+struct ResBlock : torch::nn::Module
+{
+    ResBlock(int in_channels, int out_channels);
+
+    torch::Tensor forward(torch::Tensor x);
+
+    torch::nn::Sequential base1{nullptr}, base2{nullptr};
+};
+
+struct SODNet : torch::nn::Module
+{
+    SODNet(int in_channels, int first_output_channels);
+
+    torch::Tensor forward(torch::Tensor x);
+
+    torch::nn::Sequential main{nullptr};
+};
+
 #endif // _MODELS_H_

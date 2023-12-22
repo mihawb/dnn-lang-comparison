@@ -292,3 +292,60 @@ torch::Tensor Discriminator::forward(torch::Tensor x)
 {
 	return this->main->forward(x);
 }
+
+ResBlock::ResBlock(int in_channels, int out_channels)
+{
+	torch::nn::Sequential base1_unreg{
+		torch::nn::Conv2d(torch::nn::Conv2dOptions(in_channels, in_channels, 3).stride(1).padding(1)),
+		torch::nn::BatchNorm2d(in_channels),
+		torch::nn::ReLU(torch::nn::ReLUOptions(true)),
+	};
+
+	torch::nn::Sequential base2_unreg{
+		torch::nn::Conv2d(torch::nn::Conv2dOptions(in_channels, out_channels, 3).stride(1).padding(1)),
+		torch::nn::BatchNorm2d(out_channels),
+		torch::nn::ReLU(torch::nn::ReLUOptions(true)),
+	};
+
+	this->base1 = register_module("base1", base1_unreg);
+	this->base2 = register_module("base2", base2_unreg);
+}
+
+torch::Tensor ResBlock::forward(torch::Tensor x)
+{
+	x = this->base1->forward(x) + x;
+	x = this->base2->forward(x);
+	return x;
+}
+
+SODNet::SODNet(int in_channels, int first_output_channels)
+{
+	torch::nn::Sequential main_unreg{
+		ResBlock(in_channels, first_output_channels),
+		torch::nn::MaxPool2d(torch::nn::MaxPool2dOptions(2)),
+
+		ResBlock(first_output_channels, 2 * first_output_channels),
+		torch::nn::MaxPool2d(torch::nn::MaxPool2dOptions(2)),
+
+		ResBlock(2 * first_output_channels, 4 * first_output_channels),
+		torch::nn::MaxPool2d(torch::nn::MaxPool2dOptions(2)),
+
+		ResBlock(4 * first_output_channels, 8 * first_output_channels),
+		torch::nn::MaxPool2d(torch::nn::MaxPool2dOptions(2)),
+
+		torch::nn::Conv2d(
+			torch::nn::Conv2dOptions(
+				8 * first_output_channels, 16 * first_output_channels, 3)),
+		torch::nn::MaxPool2d(torch::nn::MaxPool2dOptions(2)),
+
+		torch::nn::Flatten(),
+		torch::nn::Linear(7 * 7 * 16 * first_output_channels, 2)
+	};
+
+	this->main = register_module("main", main_unreg);
+}
+
+torch::Tensor SODNet::forward(torch::Tensor x)
+{
+	return this->main->forward(x);
+}
