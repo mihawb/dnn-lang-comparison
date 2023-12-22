@@ -27,10 +27,10 @@ int main(int argc, char* argv[])
     std::cout << "Using model: " << model_name << std::endl;
 
     /* configure the network */
-    int batch_size_train = 32;
+    int batch_size_train = 96;
     int num_steps_in_ep_train = 60000 / batch_size_train;
     int monitoring_step = 200;
-    int epochs = 15;
+    int epochs = 8;
 
     double learning_rate = 0.02f;
     double lr_decay = 0.00005f;
@@ -38,12 +38,12 @@ int main(int argc, char* argv[])
     bool load_pretrain = false;
     bool file_save = false;
 
-    int batch_size_test = 64;
-    int num_steps_test = 1000 / batch_size_test;
+    int batch_size_test = 128;
+    int num_steps_test = 10000 / batch_size_test;
 
     std::ofstream results_file;
-    results_file.open("../results/cpp_"+model_name+".csv", std::ios::out);
-    results_file << "mnames,type,eps,loss,acc,times" << std::endl;
+    results_file.open("../results/cudnn_"+model_name+".csv", std::ios::out);
+    results_file << "model_name,type,epoch,loss,performance,elapsed_time" << std::endl;
 
     /* Welcome Message */
     std::cout << "== MNIST training with CUDNN ==" << std::endl;
