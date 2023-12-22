@@ -15,6 +15,11 @@ def setup():
 		try:
 			for gpu in gpus:
 				tf.config.experimental.set_memory_growth(gpu, True)
+				tf.config.experimental.set_virtual_device_configuration(
+          			gpu, [tf.config.experimental.VirtualDeviceConfiguration(memory_limit=1500)])
+				# i have literally no idea how LIMITING the memory usage suddenly makes 
+				# everything fit into vram???? especially that the usage (on nvidia-smi)
+				# stays the same just shy of full capacity 
 		except RuntimeError as e:
 			print(e)
 
