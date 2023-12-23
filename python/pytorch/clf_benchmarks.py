@@ -1,4 +1,4 @@
-from sodnet_funcs import fit_sodnet, test_sodnet, get_adam_loaders, SODNet
+from sodnet_funcs import fit_sodnet, test_sodnet, get_adam_loaders_from_memory, SODNet
 from dcgan_funcs import fit_dcgan, generate, get_celeba_loader, Generator, Discriminator, dcgan_weights_init 
 from clf_funcs import fit, test, get_cifar10_loaders, get_mnist_loaders, get_celeba_loader, FullyConnectedNet, SimpleConvNet
 
@@ -112,6 +112,8 @@ if __name__ == '__main__':
 
 		del model
 
+	#================================================================================DCGAN
+
 	nc = 3
 	nz = 100
 	ngf = 64
@@ -158,3 +160,46 @@ if __name__ == '__main__':
 	telemetry['performance'].append(-1)
 	telemetry['elapsed_time'].append(end - start)
 	pd.DataFrame(telemetry).to_csv(results_filepath, index=False)
+
+	#===============================================================================SODNet
+
+	train_dl, test_dl = get_adam_loaders_from_memory(8, cutoff=0.8, root='../../datasets/ADAM/Training1200')
+	model = SODNet(3, 16).to(device)
+	model = model.to(device)
+	loss_func = nn.SmoothL1Loss(reduction="sum")
+	optimizer = torch.optim.Adam(model.parameters(), lr=5e-5)
+	
+	start = torch.cuda.Event(enable_timing=True)
+	end = torch.cuda.Event(enable_timing=True)
+
+	for epoch in range(1, epochs + 1):
+
+		start.record()
+		train_loss = fit_sodnet(model, device, train_dl, loss_func, optimizer)
+		end.record()
+		torch.cuda.synchronize()
+
+		telemetry['model_name'].append('SODNet')
+		telemetry['type'].append('training')
+		telemetry['epoch'].append(epoch)
+		telemetry['loss'].append(train_loss)
+		telemetry['performance'].append(-1)
+		telemetry['elapsed_time'].append(start.elapsed_time(end))
+		pd.DataFrame(telemetry).to_csv(results_filepath, index=False)
+
+		print('[%d]\tTrain loss: %.4f' % (epoch, train_loss))
+
+	start.record()
+	eval_loss = test_sodnet(model, device, test_dl, loss_func)
+	end.record()
+	torch.cuda.synchronize()
+
+	telemetry['model_name'].append('SODNet')
+	telemetry['type'].append('detection')
+	telemetry['epoch'].append(epoch)
+	telemetry['loss'].append(eval_loss)
+	telemetry['performance'].append(-1)
+	telemetry['elapsed_time'].append(start.elapsed_time(end))
+	pd.DataFrame(telemetry).to_csv(results_filepath, index=False)
+
+	print('[%d]\tEval loss: %.4f' % (epoch, eval_loss))

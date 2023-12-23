@@ -1,6 +1,7 @@
 import sys
 sys.path.append('..')
 from load_datasets import load_image
+from clf_funcs import setup, PerfCounterCallback
 
 import numpy as np
 import pandas as pd
@@ -83,3 +84,44 @@ def SODNetBuilder(in_channels, first_output_channels):
 		tf.keras.layers.Flatten(),
 		tf.keras.layers.Dense(2),
 	])
+
+
+def train_sodnet(config, telemetry, child_conn):
+	print(f'Benchmarks for SODNet begin')
+	setup()
+
+	train_ds, test_ds = get_adam_loaders(config['batch_size_SOD'], config['test_batch_size_SOD'], cutoff=0.8)
+	model = SODNetBuilder(3, 16)
+	optimizer = tf.keras.optimizers.Adam(learning_rate=5e-5)
+	model.compile(optimizer=optimizer, loss=config['loss_func_SOD'])
+	perfcounter = PerfCounterCallback(telemetry)
+
+	train_history = model.fit(
+		train_ds,
+		epochs=config['epochs'],
+		shuffle=True,
+		callbacks=[perfcounter]
+	)
+	
+	telemetry['model_name'].extend(['SODNet'] * config['epochs'])
+	telemetry['type'].extend(['training'] * config['epochs'])
+	telemetry['loss'].extend(train_history.history['loss'])
+	telemetry['performance'].extend(-1) # no validation to so as to be comparable to pytorch
+	# epoch and elapsed_time handeled by PerfCounterCallback
+
+	eval_history = model.evaluate(
+		test_ds,
+		batch_size=config['test_batch_size_SOD'],
+		callbacks=[perfcounter]
+	)
+
+	telemetry['model_name'].append('SODNet')
+	telemetry['type'].append('detection')
+	telemetry['loss'].append(eval_history[0])
+	telemetry['performance'].append(eval_history[1])
+	# epoch and elapsed_time handeled by PerfCounterCallback
+
+	child_conn.send(telemetry)
+	pd.DataFrame(telemetry).to_csv(config['results_filename'], index=False)
+
+	del model, train_ds, test_ds, train_history, eval_history

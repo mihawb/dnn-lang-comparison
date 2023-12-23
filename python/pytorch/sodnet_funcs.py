@@ -13,7 +13,7 @@ import torchvision
 import torch.nn as nn
 
 
-def fit_sodnet(model, device, loader, loss_func, optimizer):
+def fit_sodnet_with_iou(model, device, loader, loss_func, optimizer):
 	model.train()
       
 	running_loss = 0
@@ -39,7 +39,28 @@ def fit_sodnet(model, device, loader, loss_func, optimizer):
 	return running_loss/len(loader.dataset), running_iou/len(loader.dataset)
 
 
-def test_sodnet(model, device, loader, loss_func):
+def fit_sodnet(model, device, loader, loss_func, optimizer):
+	model.train()
+      
+	running_loss = 0
+  
+	for image_batch, bbox_batch in loader:
+		image_batch, bbox_batch = image_batch.to(device), bbox_batch.to(device)
+
+		optimizer.zero_grad()
+
+		output = model(image_batch)
+
+		loss = loss_func(output, bbox_batch)
+		loss.backward()
+		optimizer.step()
+
+		running_loss += loss.item()
+
+	return running_loss / len(loader.dataset)
+
+
+def test_sodnet_with_iou(model, device, loader, loss_func):
 	model.eval()
 
 	running_loss = 0
@@ -58,6 +79,22 @@ def test_sodnet(model, device, loader, loss_func):
 			running_iou += iou_metric.item()
 
 	return running_loss/len(loader.dataset), running_iou/len(loader.dataset)
+
+
+def test_sodnet(model, device, loader, loss_func):
+	model.eval()
+
+	running_loss = 0
+
+	with torch.no_grad():
+		for image_batch, bbox_batch in loader:
+			image_batch, bbox_batch = image_batch.to(device), bbox_batch.to(device)
+
+			output = model(image_batch)
+			loss = loss_func(output, bbox_batch)
+			running_loss += loss.item()
+
+	return running_loss / len(loader.dataset)
 
 
 class ADAMDataset(torch.utils.data.Dataset):
