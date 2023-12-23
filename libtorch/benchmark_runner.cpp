@@ -14,8 +14,18 @@
 #include "models.h"
 #include "cifar10.h"
 #include "celeba.h"
+#include "adam.h"
 
 int main()
+{
+    std::string root = "../datasets/ADAM/Training1200";
+    std::pair<torch::Tensor, torch::Tensor> data = read_data(root);
+    std::cout << data.first.sizes() << " " << data.second.sizes() << std::endl;
+    std::cout << data.second[0] << std::endl;
+    std::cout << data.first[0][0][100][100] << std::endl;
+}
+
+int main_sodnet_test()
 {
     torch::Tensor x = torch::zeros({2, 3, 256, 256});
 

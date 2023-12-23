@@ -16,7 +16,6 @@ cd build
 
 export CAFFE2_USE_CUDNN=1
 
-cmake -DCMAKE_PREFIX_PATH=`python -c 'import torch; print(torch.utils.cmake_prefix_path)'` ..
-# cmake -DCMAKE_PREFIX_PATH=/home/mihawb/dnn-lang-comparison/libtorch/libtorch-cxx11/share/cmake ..
-# cmake -DCMAKE_PREFIX_PATH=/home/mihawb/dnn-lang-comparison/libtorch/libtorch-pre-cxx11/share/cmake ..
+# cmake -DCMAKE_PREFIX_PATH=`python -c 'import torch; print(torch.utils.cmake_prefix_path)'` ..
+cmake -DCMAKE_PREFIX_PATH=/home/mihawb/dnn-lang-comparison/libtorch/libtorch-cxx11/share/cmake ..
 cmake --build . --config Release
