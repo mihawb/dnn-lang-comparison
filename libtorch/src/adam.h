@@ -15,7 +15,7 @@ public:
         kTest
     };
 
-    explicit ADAM(const std::string &root, Mode mode = Mode::kTrain);
+    explicit ADAM(const std::string &root, Mode mode = Mode::kTrain, float test_size = 0.8);
 
     torch::data::Example<> get(size_t index) override;
 
@@ -29,6 +29,7 @@ public:
 
 private:
      torch::Tensor images_, targets_;
+     int cutoff_;
 };
 
 #endif

@@ -16,13 +16,48 @@
 #include "celeba.h"
 #include "adam.h"
 
-int main()
+int main_adam_test()
 {
     std::string root = "../datasets/ADAM/Training1200";
     std::pair<torch::Tensor, torch::Tensor> data = read_data(root);
     std::cout << data.first.sizes() << " " << data.second.sizes() << std::endl;
     std::cout << data.second[0] << std::endl;
     std::cout << data.first[0][0][100][100] << std::endl;
+
+    auto train_dl_adam = torch::data::make_data_loader(
+        ADAM{"../datasets/ADAM/Training1200", ADAM::Mode::kTrain}
+            .map(torch::data::transforms::Stack<>()),
+        /*batch_size=*/8);
+
+    auto test_dl_adam = torch::data::make_data_loader(
+        ADAM{"../datasets/ADAM/Training1200", ADAM::Mode::kTest}
+            .map(torch::data::transforms::Stack<>()),
+        /*batch_size=*/16);
+
+    bool first = true;
+    int num_train = 0;
+    int num_test = 0;
+
+    for (auto &batch : *train_dl_adam)
+    {
+        if (first)
+        {
+            first = false;
+            std::cout << "batch data shape: " << batch.data.sizes() << std::endl;
+            std::cout << "batch target shape: " << batch.target.sizes() << std::endl;
+        }
+        num_train += batch.data.size(0);
+    }
+    for (auto &batch : *test_dl_adam)
+        num_test += batch.data.size(0);
+
+    int num_total = num_train + num_test;
+    std::cout << "sizes: (train/test/total): "
+              << num_train << "/"
+              << num_test << "/"
+              << num_total << std::endl;
+
+    return 0;
 }
 
 int main_sodnet_test()
@@ -53,8 +88,10 @@ int main_batch_loading_test()
     return 0;
 }
 
-int main_main()
+int main()
 {
+    //===================================================================environment setup
+
     torch::Device device(torch::kCPU);
     if (torch::cuda::is_available())
     {
@@ -70,6 +107,8 @@ int main_main()
     std::cout << std::fixed << std::showpoint;
     std::cout << std::setprecision(4);
 
+    //======================================training configuration and shared declarations
+
     std::ofstream results_file;
     results_file.open("../results/libtorch.csv", std::ios::out);
     results_file << "model_name,type,epoch,loss,performance,elapsed_time" << std::endl;
@@ -81,10 +120,13 @@ int main_main()
     float momentum = 0.9;
     int num_classes = 10;
     int log_interval = 200;
+
     cudaEvent_t start, stop;
     cudaEventCreate(&start);
     cudaEventCreate(&stop);
     float milliseconds = 0;
+    int batch_index = 0;
+    double running_loss = 0.0; 
 
     // multi-threaded data loader for the MNIST dataset of size [batch_size, 1, 28, 28]
     auto train_dl_mnist = torch::data::make_data_loader(
@@ -107,6 +149,17 @@ int main_main()
         CIFAR10{"../datasets/cifar-10-binary/cifar-10-batches-bin", CIFAR10::Mode::kTest}
             .map(torch::data::transforms::Stack<>()),
         /*batch_size=*/test_batch_size);
+
+    // multi-threaded data loader for the ADAM dataset of size [batch_size, 3, 256, 256]
+    auto train_dl_adam = torch::data::make_data_loader(
+        ADAM{"../datasets/ADAM/Training1200", ADAM::Mode::kTrain}
+            .map(torch::data::transforms::Stack<>()),
+        /*batch_size=*/8);
+
+    auto test_dl_adam = torch::data::make_data_loader(
+        ADAM{"../datasets/ADAM/Training1200", ADAM::Mode::kTest}
+            .map(torch::data::transforms::Stack<>()),
+        /*batch_size=*/16);
 
     //===================================================================FullyConnectedNet
     std::cout << "Benchmarks for FullyConnectedNet begin." << std::endl;
@@ -160,8 +213,8 @@ int main_main()
     }
 
     model_fcnet->eval();
-    int batch_index = 0;
-    double running_loss = 0.0;
+    batch_index = 0;
+    running_loss = 0.0;
     int corrects = 0;
     int num_samples = 0;
 
@@ -348,7 +401,7 @@ int main_main()
     cudaEventRecord(stop);
     cudaEventSynchronize(stop);
     cudaEventElapsedTime(&milliseconds, start, stop);
-    
+
     std::cout << "Eval time: " << milliseconds << " ms" << std::endl;
     results_file << "NativeResNet50,inference,"
                  << 1 << "," << running_loss / (double)batch_index << ","
@@ -467,9 +520,9 @@ int main_main()
     std::chrono::steady_clock::time_point end_read = std::chrono::steady_clock::now();
 
     results_file << "CELEBA,read,1,-1,-1,"
-        // µs for convenience as CUDA events are measured this way as well
-        << std::chrono::duration_cast<std::chrono::microseconds>(end_read - start_read).count()
-        << std::endl;
+                 // µs for convenience as CUDA events are measured this way as well
+                 << std::chrono::duration_cast<std::chrono::microseconds>(end_read - start_read).count()
+                 << std::endl;
 
     std::cout << "Benchmarks for DCGAN begin." << std::endl;
     int latent_vec_size = 100;
@@ -484,9 +537,9 @@ int main_main()
     std::cout << "models moved to gpu" << std::endl;
 
     torch::optim::Adam gen_optimizer(generator->parameters(),
-        torch::optim::AdamOptions(lr).betas(std::make_tuple(0.5, 0.999)));
+                                     torch::optim::AdamOptions(lr).betas(std::make_tuple(0.5, 0.999)));
     torch::optim::Adam disc_optimizer(discriminator->parameters(),
-        torch::optim::AdamOptions(lr).betas(std::make_tuple(0.5, 0.999)));
+                                      torch::optim::AdamOptions(lr).betas(std::make_tuple(0.5, 0.999)));
 
     std::cout << "opts created" << std::endl;
 
@@ -512,7 +565,7 @@ int main_main()
             torch::Tensor real_cpu = celeba.get_batch_by_id(batch_index).to(device);
             int b_size = real_cpu.size(0);
             auto label = torch::full({b_size}, real_label,
-                torch::TensorOptions().dtype(torch::kFloat).device(device));
+                                     torch::TensorOptions().dtype(torch::kFloat).device(device));
 
             torch::Tensor output = discriminator->forward(real_cpu).view(-1);
             torch::Tensor errD_real = torch::binary_cross_entropy(output, label);
@@ -520,7 +573,7 @@ int main_main()
             auto D_x = output.mean().item();
 
             torch::Tensor noise = torch::randn({b_size, latent_vec_size, 1, 1},
-                torch::TensorOptions().device(device));
+                                               torch::TensorOptions().device(device));
             torch::Tensor fake = generator->forward(noise);
             label.fill_(fake_label);
             output = discriminator->forward(fake.detach()).view(-1);
@@ -584,6 +637,79 @@ int main_main()
 
     std::cout << "Generation time: " << milliseconds << " ms" << std::endl;
     results_file << "DCGAN,generation,1,-1,-1," << milliseconds << std::endl;
+
+    //==================================================================================SODNet
+    std::cout << "Benchmarks for SODNet begin." << std::endl;
+    auto model_sodnet = std::make_shared<SODNet>(SODNet(3, 16));
+    model_sodnet->to(device);
+    torch::optim::SGD optimizer_sodnet(model_sodnet->parameters(), /*lr=*/lr);
+
+    model_sodnet->train();
+    for (size_t epoch = 1; epoch <= epochs; ++epoch)
+    {
+        size_t batch_index = 0;
+        double running_loss = 0.0;
+        int num_samples = 0;
+        cudaEventRecord(start);
+
+        for (auto &batch : *train_dl_adam)
+        {
+            num_samples += batch.data.size(0);
+            torch::Tensor batch_data = batch.data.to(device);
+            torch::Tensor batch_target = batch.target.to(device);
+
+            optimizer_sodnet.zero_grad();
+
+            torch::Tensor outputs = model_sodnet->forward(batch_data);
+            torch::Tensor loss = torch::smooth_l1_loss(outputs, batch_target);
+
+            loss.backward();
+            optimizer_sodnet.step();
+            running_loss += loss.item<double>();
+
+            if (++batch_index % log_interval == 0)
+            {
+                std::cout << "[" << epoch << "]\t[" << batch_index << "]\tLoss: " << loss.item<float>() << std::endl;
+            }
+        }
+
+        cudaEventRecord(stop);
+        cudaEventSynchronize(stop);
+        cudaEventElapsedTime(&milliseconds, start, stop);
+
+        std::cout << "Epoch time: " << milliseconds << " ms" << std::endl;
+        results_file << "SODNet,training,"
+                    << epoch << "," << running_loss / (batch_index + 1) << ","
+                    << -1 /* IoU neasured only for PyTorch impl :) */ << ","
+                    << milliseconds << std::endl;
+    }
+
+    model_sodnet->eval();
+    batch_index = 0;
+    running_loss = 0.0;
+
+    cudaEventRecord(start);
+    for (auto &batch : *test_dl_adam)
+    {
+        torch::Tensor batch_data = batch.data.to(device);
+        torch::Tensor batch_target = batch.target.to(device);
+
+        torch::Tensor outputs = model_sodnet->forward(batch_data);
+            torch::Tensor loss = torch::smooth_l1_loss(outputs, batch_target);
+
+        batch_index++;
+        running_loss += loss.item<double>();
+    }
+
+    cudaEventRecord(stop);
+    cudaEventSynchronize(stop);
+    cudaEventElapsedTime(&milliseconds, start, stop);
+
+    std::cout << "Eval time: " << milliseconds << " ms" << std::endl;
+    results_file << "SODNEt,detection,"
+                << 1 << "," << running_loss / (double)batch_index << ","
+                << -1 /* idc abt IoU dude !!! */ << ","
+                << milliseconds << std::endl;
 
     results_file.close();
     return 0;
