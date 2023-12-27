@@ -106,7 +106,7 @@ def train_sodnet(config, telemetry, child_conn):
 	telemetry['model_name'].extend(['SODNet'] * config['epochs'])
 	telemetry['type'].extend(['training'] * config['epochs'])
 	telemetry['loss'].extend(train_history.history['loss'])
-	telemetry['performance'].extend(-1) # no validation to so as to be comparable to pytorch
+	telemetry['performance'].extend([-1] * config['epochs']) # no validation to so as to be comparable to pytorch
 	# epoch and elapsed_time handeled by PerfCounterCallback
 
 	eval_history = model.evaluate(
@@ -117,8 +117,8 @@ def train_sodnet(config, telemetry, child_conn):
 
 	telemetry['model_name'].append('SODNet')
 	telemetry['type'].append('detection')
-	telemetry['loss'].append(eval_history[0])
-	telemetry['performance'].append(eval_history[1])
+	telemetry['loss'].append(eval_history)
+	telemetry['performance'].append(-1)
 	# epoch and elapsed_time handeled by PerfCounterCallback
 
 	child_conn.send(telemetry)

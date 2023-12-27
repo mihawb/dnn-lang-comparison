@@ -1,6 +1,6 @@
 from sodnet_funcs import fit_sodnet, test_sodnet, get_adam_loaders_from_memory, SODNet
 from dcgan_funcs import fit_dcgan, generate, get_celeba_loader, Generator, Discriminator, dcgan_weights_init 
-from clf_funcs import fit, test, get_cifar10_loaders, get_mnist_loaders, get_celeba_loader, FullyConnectedNet, SimpleConvNet
+from clf_funcs import fit, test, get_cifar10_loaders, get_mnist_loaders, FullyConnectedNet, SimpleConvNet
 
 import time
 import numpy as np
@@ -150,7 +150,7 @@ if __name__ == '__main__':
 
 	# generation
 	start = time.perf_counter_ns()
-	_ = generate(netG, device, 1, test_batch_size=test_batch_size, save=False)
+	_ = generate(netG, device, test_batch_size=test_batch_size, save=False)
 	end = time.perf_counter_ns()
 
 	telemetry['model_name'].append('DCGAN')
@@ -184,6 +184,7 @@ if __name__ == '__main__':
 		telemetry['epoch'].append(epoch)
 		telemetry['loss'].append(train_loss)
 		telemetry['performance'].append(-1)
+		# IoU would have to be measured during training and therefore make the results incomparable
 		telemetry['elapsed_time'].append(start.elapsed_time(end))
 		pd.DataFrame(telemetry).to_csv(results_filepath, index=False)
 

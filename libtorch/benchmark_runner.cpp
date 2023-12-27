@@ -622,7 +622,7 @@ int main()
         std::cout << "Epoch time: " << milliseconds << " ms" << std::endl;
         results_file << "DCGAN,training,"
                      << epoch << ","
-                     << running_loss_G << "," << running_loss_D << ","
+                     << running_loss_G << "|" << running_loss_D << ","
                      << running_D_x << "|" << running_D_G_z1 << "|" << running_D_G_z2 << ","
                      << milliseconds << std::endl;
     }
@@ -661,7 +661,7 @@ int main()
             optimizer_sodnet.zero_grad();
 
             torch::Tensor outputs = model_sodnet->forward(batch_data);
-            torch::Tensor loss = torch::smooth_l1_loss(outputs, batch_target);
+            torch::Tensor loss = torch::smooth_l1_loss(outputs, batch_target, at::Reduction::Sum);
 
             loss.backward();
             optimizer_sodnet.step();
@@ -706,7 +706,7 @@ int main()
     cudaEventElapsedTime(&milliseconds, start, stop);
 
     std::cout << "Eval time: " << milliseconds << " ms" << std::endl;
-    results_file << "SODNEt,detection,"
+    results_file << "SODNet,detection,"
                 << 1 << "," << running_loss / (double)batch_index << ","
                 << -1 /* idc abt IoU dude !!! */ << ","
                 << milliseconds << std::endl;
