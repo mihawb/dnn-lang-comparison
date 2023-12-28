@@ -105,6 +105,11 @@ def get_mnist_loaders(batch_size, test_batch_size=None, cutoff=1, flatten=True):
 		(x_train, y_train, x_val, y_val, x_test, y_test)
 	)
 
+	x_train, x_val, x_test = map(
+		lambda x: x.to(torch.float32),
+		(x_train, x_val, x_test)
+	)
+
 	train_ds = TensorDataset(x_train, y_train)
 	val_ds = TensorDataset(x_val, y_val)
 	test_ds = TensorDataset(x_test, y_test)
@@ -138,7 +143,7 @@ class FullyConnectedNet(nn.Module):
 	
 	def __init__(self, layers=[784, 800, 10]):
 		super(FullyConnectedNet, self).__init__()
-		self.layers = nn.ModuleList([nn.Linear(a, b, dtype=torch.float64) for a, b in zip(layers[:-1], layers[1:])])
+		self.layers = nn.ModuleList([nn.Linear(a, b) for a, b in zip(layers[:-1], layers[1:])])
 
 	def forward(self, x):
 		for layer in self.layers[:-1]:
@@ -154,17 +159,17 @@ class SimpleConvNet(nn.Module):
 	def __init__(self, num_classes=10):
 		super().__init__()
 		self.conv1 = nn.Sequential(         
-			nn.Conv2d(1, 16, 5, 1, 2, dtype=torch.float64),
+			nn.Conv2d(1, 16, 5, 1, 2),
 			nn.ReLU(),                                       
 			nn.MaxPool2d(2)
 		)
 		self.conv2 = nn.Sequential(         
-			nn.Conv2d(16, 32, 5, 1, 2, dtype=torch.float64),
+			nn.Conv2d(16, 32, 5, 1, 2),
 			nn.ReLU(),
 			nn.MaxPool2d(2),  
 		)
-		self.dense = nn.Linear(32 * 7 * 7, 500, dtype=torch.float64)
-		self.classifier = nn.Linear(500, num_classes, dtype=torch.float64)
+		self.dense = nn.Linear(32 * 7 * 7, 500)
+		self.classifier = nn.Linear(500, num_classes)
 
 	def forward(self, x):
 		x = self.conv1(x)

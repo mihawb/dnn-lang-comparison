@@ -43,25 +43,26 @@ def get_results(results_root: str, save: bool=False) -> tuple[pd.DataFrame, pd.D
 	pytorch = pd.read_csv(f'{results_root}/pytorch.csv')
 	pytorch = pytorch[pytorch.type == 'training']
 	pytorch.insert(0, 'framework', 'PyTorch')
-	# kinda counterintuitive, but where changes values where the condition is false
-	pytorch.elapsed_time.where(pytorch.model_name != 'DCGAN', pytorch.elapsed_time / 1000000000, inplace=True)
-	pytorch.elapsed_time.where(pytorch.model_name == 'DCGAN', pytorch.elapsed_time / 1000, inplace=True)
+	pytorch.elapsed_time /= 1e9
+	# pytorch.elapsed_time.where(pytorch.model_name != 'DCGAN', pytorch.elapsed_time / 1000000000, inplace=True)
+	# pytorch.elapsed_time.where(pytorch.model_name == 'DCGAN', pytorch.elapsed_time / 1000, inplace=True)
 
 	libtorch = pd.read_csv(f'{results_root}/libtorch.csv')
 	libtorch = libtorch[(libtorch.type == 'training') | (libtorch.type == 'read')]
 	libtorch.insert(0, 'framework', 'LibTorch')
-	libtorch.elapsed_time.where(libtorch.model_name != 'CELEBA', libtorch.elapsed_time / 1000000, inplace=True)
-	libtorch.elapsed_time.where(libtorch.model_name == 'CELEBA', libtorch.elapsed_time / 1000, inplace=True)
+	# kinda counterintuitive, but where changes values where the condition is false
+	libtorch.elapsed_time.where(libtorch.model_name != 'CELEBA', libtorch.elapsed_time / 1e6, inplace=True)
+	libtorch.elapsed_time.where(libtorch.model_name == 'CELEBA', libtorch.elapsed_time / 1e3, inplace=True)
 
 	tensorflow = pd.read_csv(f'{results_root}/tensorflow.csv')
 	tensorflow = tensorflow[tensorflow.type == 'training']
 	tensorflow.insert(0, 'framework', 'TensorFlow')
-	tensorflow.elapsed_time /= 1000000000
+	tensorflow.elapsed_time /= 1e9
 
 	cudnn = preprocess_cudnn(results_root)
 	cudnn = cudnn[cudnn.type == 'training']
 	cudnn.insert(0, 'framework', 'cuDNN')
-	cudnn.elapsed_time /= 1000
+	cudnn.elapsed_time /= 1e3
 
 	matlab = pd.concat([fcnet, scvnet, mnet])
 	matlab = matlab[matlab.type == 'training']
@@ -76,7 +77,8 @@ def get_results(results_root: str, save: bool=False) -> tuple[pd.DataFrame, pd.D
 	pytorch = pd.read_csv(f'{results_root}/pytorch.csv')
 	pytorch = pytorch[pytorch.type != 'training']
 	pytorch.insert(0, 'framework', 'PyTorch')
-	pytorch.elapsed_time.where(pytorch.model_name != 'DCGAN', pytorch.elapsed_time / 1000000, inplace=True)
+	pytorch.elapsed_time /= 1e6
+	# pytorch.elapsed_time.where(pytorch.model_name != 'DCGAN', pytorch.elapsed_time / 1000000, inplace=True)
 	pytorch
 
 	libtorch = pd.read_csv(f'{results_root}/libtorch.csv')
@@ -86,7 +88,7 @@ def get_results(results_root: str, save: bool=False) -> tuple[pd.DataFrame, pd.D
 	tensorflow = pd.read_csv(f'{results_root}/tensorflow.csv')
 	tensorflow = tensorflow[tensorflow.type != 'training']
 	tensorflow.insert(0, 'framework', 'TensorFlow')
-	tensorflow.elapsed_time /= 1000000
+	tensorflow.elapsed_time /= 1e6
 
 	cudnn = preprocess_cudnn(results_root)
 	cudnn = cudnn[cudnn.type != 'training']
@@ -95,7 +97,7 @@ def get_results(results_root: str, save: bool=False) -> tuple[pd.DataFrame, pd.D
 	matlab = pd.concat([fcnet, scvnet, mnet])
 	matlab = matlab[matlab.type != 'training']
 	matlab.insert(0, 'framework', 'Matlab')
-	matlab.elapsed_time *= 1000
+	matlab.elapsed_time *= 1e3
 
 	evaluation = pd.concat([pytorch, tensorflow, libtorch, cudnn, matlab])
 	evaluation.drop(columns=['type', 'loss', 'performance', 'epoch'], inplace=True)

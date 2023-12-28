@@ -63,8 +63,6 @@ if __name__ == '__main__':
 	momentum = 0.9
 	num_classes = 10
 	log_interval = 200
-	start = torch.cuda.Event(enable_timing=True)
-	end = torch.cuda.Event(enable_timing=True)
 	results_filepath = f'../../results/pytorch-{time.time_ns()}.csv'
 
 	use_cuda = torch.cuda.is_available()
@@ -80,10 +78,9 @@ if __name__ == '__main__':
 
 		# training
 		for epoch in range(1, epochs + 1):
-			start.record()
+			start = time.perf_counter_ns()
 			train_history = fit(model, device, train_dl, loss_func, epoch, optimizer=opt, log_interval=log_interval, silent=False)
-			end.record()
-			torch.cuda.synchronize()
+			end = time.perf_counter_ns()
 
 			_, accuracy = test(model, device, test_dl, loss_func, silent=True)
 
@@ -94,20 +91,19 @@ if __name__ == '__main__':
 			telemetry['epoch'].append(epoch)
 			telemetry['loss'].append(train_history)
 			telemetry['performance'].append(accuracy)
-			telemetry['elapsed_time'].append(start.elapsed_time(end))
+			telemetry['elapsed_time'].append(end - start)
 
 		# inference
-		start.record()
+		start = time.perf_counter_ns()
 		loss, accuracy = test(model, device, test_dl, loss_func, silent=True)
-		end.record()
-		torch.cuda.synchronize()
+		end = time.perf_counter_ns()
 
 		telemetry['model_name'].append(model_name)
 		telemetry['type'].append('inference')
 		telemetry['epoch'].append(1)
 		telemetry['loss'].append(loss)
 		telemetry['performance'].append(accuracy)
-		telemetry['elapsed_time'].append(start.elapsed_time(end))
+		telemetry['elapsed_time'].append(end - start)
 		pd.DataFrame(telemetry).to_csv(results_filepath, index=False)
 
 		del model
@@ -174,10 +170,9 @@ if __name__ == '__main__':
 
 	for epoch in range(1, epochs + 1):
 
-		start.record()
+		start = time.perf_counter_ns()
 		train_loss = fit_sodnet(model, device, train_dl, loss_func, optimizer)
-		end.record()
-		torch.cuda.synchronize()
+		end = time.perf_counter_ns()
 
 		telemetry['model_name'].append('SODNet')
 		telemetry['type'].append('training')
@@ -185,22 +180,21 @@ if __name__ == '__main__':
 		telemetry['loss'].append(train_loss)
 		telemetry['performance'].append(-1)
 		# IoU would have to be measured during training and therefore make the results incomparable
-		telemetry['elapsed_time'].append(start.elapsed_time(end))
+		telemetry['elapsed_time'].append(end - start)
 		pd.DataFrame(telemetry).to_csv(results_filepath, index=False)
 
 		print('[%d]\tTrain loss: %.4f' % (epoch, train_loss))
 
-	start.record()
+	start = time.perf_counter_ns()
 	eval_loss = test_sodnet(model, device, test_dl, loss_func)
-	end.record()
-	torch.cuda.synchronize()
+	end = time.perf_counter_ns()
 
 	telemetry['model_name'].append('SODNet')
 	telemetry['type'].append('detection')
 	telemetry['epoch'].append(epoch)
 	telemetry['loss'].append(eval_loss)
 	telemetry['performance'].append(-1)
-	telemetry['elapsed_time'].append(start.elapsed_time(end))
+	telemetry['elapsed_time'].append(end - start)
 	pd.DataFrame(telemetry).to_csv(results_filepath, index=False)
 
 	print('[%d]\tEval loss: %.4f' % (epoch, eval_loss))
