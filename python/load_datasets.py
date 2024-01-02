@@ -1,5 +1,6 @@
 import numpy as np
 import pickle
+import os
 from PIL import Image, ImageDraw
 import matplotlib.pyplot as plt
 
@@ -43,7 +44,7 @@ def load_cifar10_imgs_and_labels(pickle_path) -> tuple[np.ndarray, np.ndarray]:
 
 # ADAM
 
-def load_image(df, idx, root='../../datasets/ADAM/Training1200'):
+def load_adam_image(df, idx, root='../../datasets/ADAM/Training1200'):
 	image_name = df.loc[idx, 'imgName']
 	data_type = 'AMD' if image_name.startswith('A') else 'Non-AMD'
 	image_path = f'{root}/{data_type}/{image_name}'
@@ -78,3 +79,12 @@ def show_image_with_two_bboxes(image, target_bbox, eval_bbox, title, ax=None):
 	else: 
 		plt.imshow(image)
 		plt.title(title)
+
+# CELEBA
+		
+def load_celeba_images(path):
+	celeba_dir = os.fsencode(path)
+	for filehand in os.listdir(celeba_dir):
+		filename = os.fsdecode(filehand)
+		yield Image.open(f'{path}/{filename}')
+		

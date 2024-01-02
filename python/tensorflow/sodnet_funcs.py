@@ -1,6 +1,6 @@
 import sys
 sys.path.append('..')
-from load_datasets import load_image
+from load_datasets import load_adam_image
 from clf_funcs import setup, PerfCounterCallback
 
 import numpy as np
@@ -14,7 +14,7 @@ def build_adam_dataset(df, image_size=256):
 	imgs, bboxes = [], []
 
 	for idx in df.index:
-		img, bbox = load_image(df, idx)
+		img, bbox = load_adam_image(df, idx)
 
 		img_arr = np.array(img)
 		imgs.append(img_arr)

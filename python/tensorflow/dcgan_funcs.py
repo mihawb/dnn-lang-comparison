@@ -1,3 +1,6 @@
+import sys
+sys.path.append('..')
+from load_datasets import load_celeba_images
 from clf_funcs import setup
 
 import time
@@ -17,6 +20,33 @@ def get_celeba_loader(batch_size, image_size=64, root='../../datasets/celeba'):
         image_size=(image_size, image_size),
         batch_size=batch_size
 	)
+
+
+def get_celeba_loader_from_memory_old(batch_size, image_size=64, root='../../datasets/celeba'):
+	# saddly this is an expensive abstraction due to tensorflow's implicit GPU data transfering
+	dl = get_celeba_loader(batch_size, image_size=image_size, root=root)
+	collected_batches = [batch for batch in dl]
+	return collected_batches
+
+
+def get_celeba_loader_from_memory(batch_size, image_size=64, root='../../datasets/celeba'):
+	root += '/img_align_celeba'
+	imgs = []
+
+	for img in load_celeba_images(root):
+		resized = img.resize((image_size, image_size))
+		img_arr = np.array(resized).astype(np.float32) / 255 # uint8::max
+		imgs.append(img_arr)
+
+		# debug
+		if len(imgs) % 5000 == 0: print(len(imgs))
+		# if len(imgs) >= 25000: break
+
+	with tf.device('CPU'):
+		ds = tf.data.Dataset.from_tensor_slices(imgs).batch(batch_size)
+	print('ds built')
+
+	return ds
 
 
 def GeneratorBuilder(latent_vec_size=100, feat_map_size=64):
@@ -120,11 +150,23 @@ def train_step(modelG, modelD, optG, optD, imgs_batch, loss_func, latent_vec_siz
 	return gen_loss, disc_loss, D_x, D_G_z1, D_G_z2
 
 
-def train_dcgan(config, telemetry, child_conn):
-	print('Benchmarks for DCGAN begin')
+def train_dcgan(config, telemetry, child_conn=None):
 	setup()
 
-	celeba_ds = get_celeba_loader(config['batch_size'], root='../../datasets/celeba_trunc')
+	print('Loading CELEBA')
+	start = time.perf_counter_ns()
+	celeba_ds = get_celeba_loader_from_memory(config['batch_size'], root='../../datasets/celeba_tiny')
+	end = time.perf_counter_ns()
+
+	telemetry['model_name'].append('CELEBA')
+	telemetry['type'].append('read')
+	telemetry['epoch'].append(1)
+	telemetry['loss'].append(-1)
+	telemetry['performance'].append(-1)
+	telemetry['elapsed_time'].append(end - start)
+
+	print('CELEBA loaded')
+
 	modelG = GeneratorBuilder()
 	modelD = DiscriminatorBulider()
 	optG = tf.keras.optimizers.Adam(config['lr'])
@@ -136,6 +178,7 @@ def train_dcgan(config, telemetry, child_conn):
 	running_loss_G, running_loss_D = 0.0, 0.0
 	running_D_x, running_D_G_z1, running_D_G_z2 = 0.0, 0.0, 0.0
 
+	print('Benchmarks for DCGAN begin')
 	for epoch in range(1, config['epochs'] + 1):
 		print('epoch', epoch)
 		history = {
@@ -147,6 +190,7 @@ def train_dcgan(config, telemetry, child_conn):
 		}
 		start = time.perf_counter_ns()
 		for batch_idx, data in enumerate(celeba_ds):
+			# maybe use `tensor = tf.convert_to_tensor(data)` bc ds was created with CPU?
 			errG, errD, D_x, D_G_z1, D_G_z2 = train_step(modelG, modelD, optG, optD, data, loss_func)
 
 			# batch telemetry
@@ -197,7 +241,7 @@ def train_dcgan(config, telemetry, child_conn):
 	telemetry['performance'].append(-1)
 	telemetry['elapsed_time'].append(end - start)
 
-	child_conn.send(telemetry)
 	pd.DataFrame(telemetry).to_csv(config['results_filename'], index=False)
+	if child_conn is not None: child_conn.send(telemetry)
 
 	del modelG, modelD, celeba_ds

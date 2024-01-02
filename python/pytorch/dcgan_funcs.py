@@ -1,3 +1,7 @@
+import sys
+sys.path.append('..')
+from load_datasets import load_celeba_images
+
 import time
 import numpy as np
 import matplotlib.pyplot as plt
@@ -103,6 +107,14 @@ def get_celeba_loader(batch_size, image_size=64, root='../../datasets/celeba'):
     dl = torch.utils.data.DataLoader(ds, batch_size=batch_size, shuffle=True, num_workers=2)
 
     return dl
+
+
+def get_celeba_loader_from_memory(batch_size, image_size=64, root='../../datasets/celeba'):
+    # a near-zero-cost abstraction since pytorch does not implicity move data to GPU
+	dl = get_celeba_loader(batch_size, image_size=image_size, root=root)
+	# collected_batches = [(batch[0].clone().detach(), batch[1].clone().detach()) for batch in dl]
+	collected_batches = [batch for batch in dl]
+	return collected_batches
 
 
 def dcgan_weights_init(model):

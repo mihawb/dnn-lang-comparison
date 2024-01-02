@@ -1,5 +1,5 @@
 from sodnet_funcs import fit_sodnet, test_sodnet, get_adam_loaders_from_memory, SODNet
-from dcgan_funcs import fit_dcgan, generate, get_celeba_loader, Generator, Discriminator, dcgan_weights_init 
+from dcgan_funcs import fit_dcgan, generate, get_celeba_loader_from_memory, Generator, Discriminator, dcgan_weights_init 
 from clf_funcs import fit, test, get_cifar10_loaders, get_mnist_loaders, FullyConnectedNet, SimpleConvNet
 
 import time
@@ -11,6 +11,12 @@ import torch.nn as nn
 import torch.optim as optim
 import torch.nn.functional as F
 from torchvision.models import resnet50, densenet121, mobilenet_v2, convnext_tiny
+
+
+RUN_CLFS = True
+clfs = ['FullyConnectedNet', 'SimpleConvNet', 'ResNet-50', 'MobileNet-v2', 'ConvNeXt-Tiny']
+RUN_DCGAN = True
+RUN_SODNET = True
 
 
 def env_builder(name: str, num_classes: int, batch_size: int, test_batch_size: int): 
@@ -69,132 +75,145 @@ if __name__ == '__main__':
 	device = torch.device("cuda" if use_cuda else "cpu")
 	print(f'CUDA enabled: {use_cuda}')
 
-	for model_name in ['FullyConnectedNet', 'SimpleConvNet', 'ResNet-50', 'DenseNet-121', 'MobileNet-v2', 'ConvNeXt-Tiny']:
-		print(f'Benchmarks for {model_name} begin')
+	if RUN_CLFS:
+		for model_name in clfs:
+			print(f'Benchmarks for {model_name} begin')
 
-		model, train_dl, test_dl, loss_func = env_builder(model_name, num_classes, batch_size, test_batch_size)
-		model = model.to(device)
-		opt = optim.SGD(model.parameters(), lr=lr, momentum=momentum)
+			model, train_dl, test_dl, loss_func = env_builder(model_name, num_classes, batch_size, test_batch_size)
+			model = model.to(device)
+			opt = optim.SGD(model.parameters(), lr=lr, momentum=momentum)
 
-		# training
-		for epoch in range(1, epochs + 1):
+			# training
+			for epoch in range(1, epochs + 1):
+				start = time.perf_counter_ns()
+				train_history = fit(model, device, train_dl, loss_func, epoch, optimizer=opt, log_interval=log_interval, silent=False)
+				end = time.perf_counter_ns()
+
+				_, accuracy = test(model, device, test_dl, loss_func, silent=True)
+
+				train_history = np.mean(train_history)
+
+				telemetry['model_name'].append(model_name)
+				telemetry['type'].append('training')
+				telemetry['epoch'].append(epoch)
+				telemetry['loss'].append(train_history)
+				telemetry['performance'].append(accuracy)
+				telemetry['elapsed_time'].append(end - start)
+
+			# inference
 			start = time.perf_counter_ns()
-			train_history = fit(model, device, train_dl, loss_func, epoch, optimizer=opt, log_interval=log_interval, silent=False)
+			loss, accuracy = test(model, device, test_dl, loss_func, silent=True)
 			end = time.perf_counter_ns()
 
-			_, accuracy = test(model, device, test_dl, loss_func, silent=True)
-
-			train_history = np.mean(train_history)
-
 			telemetry['model_name'].append(model_name)
-			telemetry['type'].append('training')
-			telemetry['epoch'].append(epoch)
-			telemetry['loss'].append(train_history)
+			telemetry['type'].append('inference')
+			telemetry['epoch'].append(1)
+			telemetry['loss'].append(loss)
 			telemetry['performance'].append(accuracy)
 			telemetry['elapsed_time'].append(end - start)
+			pd.DataFrame(telemetry).to_csv(results_filepath, index=False)
 
-		# inference
-		start = time.perf_counter_ns()
-		loss, accuracy = test(model, device, test_dl, loss_func, silent=True)
-		end = time.perf_counter_ns()
-
-		telemetry['model_name'].append(model_name)
-		telemetry['type'].append('inference')
-		telemetry['epoch'].append(1)
-		telemetry['loss'].append(loss)
-		telemetry['performance'].append(accuracy)
-		telemetry['elapsed_time'].append(end - start)
-		pd.DataFrame(telemetry).to_csv(results_filepath, index=False)
-
-		del model
+			del model
 
 	#================================================================================DCGAN
 
-	nc = 3
-	nz = 100
-	ngf = 64
-	ndf = 64
-	lr = 1e-4
+	if RUN_DCGAN:
+		nc = 3
+		nz = 100
+		ngf = 64
+		ndf = 64
+		lr = 1e-4
 
-	netG = Generator(nc, nz, ngf).to(device)
-	netD = Discriminator(nc, ndf).to(device)
-	netG.apply(dcgan_weights_init)
-	netD.apply(dcgan_weights_init)
+		netG = Generator(nc, nz, ngf).to(device)
+		netD = Discriminator(nc, ndf).to(device)
+		netG.apply(dcgan_weights_init)
+		netD.apply(dcgan_weights_init)
 
-	celeba_dl = get_celeba_loader(batch_size=batch_size, root='../../datasets/celeba_trunc')
-
-	loss_func = nn.BCELoss()
-	optimizerD = optim.Adam(netD.parameters(), lr=lr, betas=(0.5, 0.999))
-	optimizerG = optim.Adam(netG.parameters(), lr=lr, betas=(0.5, 0.999))
-
-	print('Benchmarks for DCGAN begin')
-	for epoch in range(1, epochs + 1):
+		print('Loading CELEBA')
 		start = time.perf_counter_ns()
-		gan_hist = fit_dcgan(netG, netD, device, celeba_dl, loss_func, epoch, optimizerG, optimizerD, nz, log_interval=log_interval)
+		celeba_dl = get_celeba_loader_from_memory(batch_size=batch_size, root='../../datasets/celeba_tiny')
 		end = time.perf_counter_ns()
 
-		for stat in gan_hist:
-			gan_hist[stat] = np.mean(gan_hist[stat])		
+		telemetry['model_name'].append('CELEBA')
+		telemetry['type'].append('read')
+		telemetry['epoch'].append(1)
+		telemetry['loss'].append(-1)
+		telemetry['performance'].append(-1)
+		telemetry['elapsed_time'].append(end - start)
+
+		loss_func = nn.BCELoss()
+		optimizerD = optim.Adam(netD.parameters(), lr=lr, betas=(0.5, 0.999))
+		optimizerG = optim.Adam(netG.parameters(), lr=lr, betas=(0.5, 0.999))
+
+		print('Benchmarks for DCGAN begin')
+		for epoch in range(1, epochs + 1):
+			start = time.perf_counter_ns()
+			gan_hist = fit_dcgan(netG, netD, device, celeba_dl, loss_func, epoch, optimizerG, optimizerD, nz, log_interval=log_interval)
+			end = time.perf_counter_ns()
+
+			for stat in gan_hist:
+				gan_hist[stat] = np.mean(gan_hist[stat])		
+
+			telemetry['model_name'].append('DCGAN')
+			telemetry['type'].append('training')
+			telemetry['epoch'].append(epoch)
+			telemetry['loss'].append(f'{gan_hist["loss_G"]}|{gan_hist["loss_D"]}')
+			telemetry['performance'].append(f'{gan_hist["D_x"]}|{gan_hist["D_G_z1"]}|{gan_hist["D_G_z2"]}')
+			telemetry['elapsed_time'].append(end - start)
+			pd.DataFrame(telemetry).to_csv(results_filepath, index=False)
+
+		# generation
+		start = time.perf_counter_ns()
+		_ = generate(netG, device, test_batch_size=test_batch_size, save=False)
+		end = time.perf_counter_ns()
 
 		telemetry['model_name'].append('DCGAN')
-		telemetry['type'].append('training')
-		telemetry['epoch'].append(epoch)
-		telemetry['loss'].append(f'{gan_hist["loss_G"]}|{gan_hist["loss_D"]}')
-		telemetry['performance'].append(f'{gan_hist["D_x"]}|{gan_hist["D_G_z1"]}|{gan_hist["D_G_z2"]}')
+		telemetry['type'].append('generation')
+		telemetry['epoch'].append(1)
+		telemetry['loss'].append(-1)
+		telemetry['performance'].append(-1)
 		telemetry['elapsed_time'].append(end - start)
 		pd.DataFrame(telemetry).to_csv(results_filepath, index=False)
-
-	# generation
-	start = time.perf_counter_ns()
-	_ = generate(netG, device, test_batch_size=test_batch_size, save=False)
-	end = time.perf_counter_ns()
-
-	telemetry['model_name'].append('DCGAN')
-	telemetry['type'].append('generation')
-	telemetry['epoch'].append(1)
-	telemetry['loss'].append(-1)
-	telemetry['performance'].append(-1)
-	telemetry['elapsed_time'].append(end - start)
-	pd.DataFrame(telemetry).to_csv(results_filepath, index=False)
 
 	#===============================================================================SODNet
 
-	train_dl, test_dl = get_adam_loaders_from_memory(8, cutoff=0.8, root='../../datasets/ADAM/Training1200')
-	model = SODNet(3, 16).to(device)
-	model = model.to(device)
-	loss_func = nn.SmoothL1Loss(reduction="sum")
-	optimizer = torch.optim.Adam(model.parameters(), lr=5e-5)
-	
-	start = torch.cuda.Event(enable_timing=True)
-	end = torch.cuda.Event(enable_timing=True)
+	if RUN_SODNET:
+		train_dl, test_dl = get_adam_loaders_from_memory(8, cutoff=0.8, root='../../datasets/ADAM/Training1200')
+		model = SODNet(3, 16).to(device)
+		model = model.to(device)
+		loss_func = nn.SmoothL1Loss(reduction="sum")
+		optimizer = torch.optim.Adam(model.parameters(), lr=5e-5)
+		
+		start = torch.cuda.Event(enable_timing=True)
+		end = torch.cuda.Event(enable_timing=True)
 
-	for epoch in range(1, epochs + 1):
+		for epoch in range(1, epochs + 1):
+
+			start = time.perf_counter_ns()
+			train_loss = fit_sodnet(model, device, train_dl, loss_func, optimizer)
+			end = time.perf_counter_ns()
+
+			telemetry['model_name'].append('SODNet')
+			telemetry['type'].append('training')
+			telemetry['epoch'].append(epoch)
+			telemetry['loss'].append(train_loss)
+			telemetry['performance'].append(-1)
+			# IoU would have to be measured during training and therefore make the results incomparable
+			telemetry['elapsed_time'].append(end - start)
+			pd.DataFrame(telemetry).to_csv(results_filepath, index=False)
+
+			print('[%d]\tTrain loss: %.4f' % (epoch, train_loss))
 
 		start = time.perf_counter_ns()
-		train_loss = fit_sodnet(model, device, train_dl, loss_func, optimizer)
+		eval_loss = test_sodnet(model, device, test_dl, loss_func)
 		end = time.perf_counter_ns()
 
 		telemetry['model_name'].append('SODNet')
-		telemetry['type'].append('training')
+		telemetry['type'].append('detection')
 		telemetry['epoch'].append(epoch)
-		telemetry['loss'].append(train_loss)
+		telemetry['loss'].append(eval_loss)
 		telemetry['performance'].append(-1)
-		# IoU would have to be measured during training and therefore make the results incomparable
 		telemetry['elapsed_time'].append(end - start)
 		pd.DataFrame(telemetry).to_csv(results_filepath, index=False)
 
-		print('[%d]\tTrain loss: %.4f' % (epoch, train_loss))
-
-	start = time.perf_counter_ns()
-	eval_loss = test_sodnet(model, device, test_dl, loss_func)
-	end = time.perf_counter_ns()
-
-	telemetry['model_name'].append('SODNet')
-	telemetry['type'].append('detection')
-	telemetry['epoch'].append(epoch)
-	telemetry['loss'].append(eval_loss)
-	telemetry['performance'].append(-1)
-	telemetry['elapsed_time'].append(end - start)
-	pd.DataFrame(telemetry).to_csv(results_filepath, index=False)
-
-	print('[%d]\tEval loss: %.4f' % (epoch, eval_loss))
+		print('[%d]\tEval loss: %.4f' % (epoch, eval_loss))

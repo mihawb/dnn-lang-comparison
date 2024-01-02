@@ -15,7 +15,7 @@ const std::string inner_root{"img_align_celeba"};
 
 // constexpr const uint32_t num_samples{202599}; // full celeba dataset
 // constexpr const uint32_t num_samples{12600}; // temporary since reading in takes too long
-constexpr const uint32_t num_samples{50000}; // truncated celeba since full ds does not fit into my ram
+constexpr const uint32_t num_samples{30000}; // truncated celeba since full ds does not fit into my ram
 constexpr const uint32_t image_height{64};
 constexpr const uint32_t image_width{64};
 constexpr const uint32_t image_channels{3};

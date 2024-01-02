@@ -1,6 +1,6 @@
 import sys
 sys.path.append('..')
-from load_datasets import load_image
+from load_datasets import load_adam_image
 
 import time
 import numpy as np
@@ -141,7 +141,7 @@ def build_adam_dataset(df, image_size=256):
 	imgs, bboxes = [], []
 
 	for idx in df.index:
-		img, bbox = load_image(df, idx)
+		img, bbox = load_adam_image(df, idx)
 
 		img_arr = np.array(img).transpose((2,0,1)).astype(np.float32) / 255 # uint8::max
 		imgs.append(img_arr)

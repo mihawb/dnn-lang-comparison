@@ -8,6 +8,12 @@ import multiprocessing as mp
 import tensorflow as tf
 
 
+RUN_CLFS = True
+clfs = ['FullyConnectedNet', 'SimpleConvNet', 'ResNet-50', 'DenseNet-121', 'MobileNet-v2', 'ConvNeXt-Tiny']
+RUN_DCGAN = True
+RUN_SODNET = True
+
+
 if __name__ == '__main__':
 	mp.set_start_method('spawn')
 	parent_conn, child_conn = mp.Pipe()
@@ -39,18 +45,21 @@ if __name__ == '__main__':
 		'results_filename': f'../../results/tensorflow-{time.time_ns()}.csv'
 	}
 		
-	for model_name in ['FullyConnectedNet', 'SimpleConvNet', 'ResNet-50', 'DenseNet-121', 'MobileNet-v2', 'ConvNeXt-Tiny']:
-		p = mp.Process(target=train_single_model, args=(model_name, config, telemetry, child_conn))
+	if RUN_CLFS:
+		for model_name in clfs:
+			p = mp.Process(target=train_single_model, args=(model_name, config, telemetry, child_conn))
+			p.start()
+			telemetry = parent_conn.recv()
+			p.join()
+
+	if RUN_DCGAN:
+		p = mp.Process(target=train_dcgan, args=(config, telemetry, child_conn))
 		p.start()
 		telemetry = parent_conn.recv()
 		p.join()
 
-	p = mp.Process(target=train_dcgan, args=(config, telemetry, child_conn))
-	p.start()
-	telemetry = parent_conn.recv()
-	p.join()
-
-	p = mp.Process(target=train_sodnet, args=(config, telemetry, child_conn))
-	p.start()
-	telemetry = parent_conn.recv()
-	p.join()
+	if RUN_SODNET:
+		p = mp.Process(target=train_sodnet, args=(config, telemetry, child_conn))
+		p.start()
+		telemetry = parent_conn.recv()
+		p.join()
