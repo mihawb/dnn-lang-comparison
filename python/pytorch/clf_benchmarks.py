@@ -74,6 +74,8 @@ if __name__ == '__main__':
 	use_cuda = torch.cuda.is_available()
 	device = torch.device("cuda" if use_cuda else "cpu")
 	print(f'CUDA enabled: {use_cuda}')
+	start = torch.cuda.Event()
+	end = torch.cuda.Event()
 
 	if RUN_CLFS:
 		for model_name in clfs:
@@ -85,9 +87,12 @@ if __name__ == '__main__':
 
 			# training
 			for epoch in range(1, epochs + 1):
-				start = time.perf_counter_ns()
+				# start = time.perf_counter_ns()
+				start.record()
 				train_history = fit(model, device, train_dl, loss_func, epoch, optimizer=opt, log_interval=log_interval, silent=False)
-				end = time.perf_counter_ns()
+				# end = time.perf_counter_ns()
+				end.record()
+				torch.cuda.synchronize()
 
 				_, accuracy = test(model, device, test_dl, loss_func, silent=True)
 
@@ -98,19 +103,24 @@ if __name__ == '__main__':
 				telemetry['epoch'].append(epoch)
 				telemetry['loss'].append(train_history)
 				telemetry['performance'].append(accuracy)
-				telemetry['elapsed_time'].append(end - start)
+				# telemetry['elapsed_time'].append(end - start)
+				telemetry['elapsed_time'].append(start.elapsed_time(end) * 1e6)
 
 			# inference
-			start = time.perf_counter_ns()
+			# start = time.perf_counter_ns()
+			start.record()
 			loss, accuracy = test(model, device, test_dl, loss_func, silent=True)
-			end = time.perf_counter_ns()
+			# end = time.perf_counter_ns()
+			end.record()
+			torch.cuda.synchronize()
 
 			telemetry['model_name'].append(model_name)
 			telemetry['type'].append('inference')
 			telemetry['epoch'].append(1)
 			telemetry['loss'].append(loss)
 			telemetry['performance'].append(accuracy)
-			telemetry['elapsed_time'].append(end - start)
+			# telemetry['elapsed_time'].append(end - start)
+			telemetry['elapsed_time'].append(start.elapsed_time(end) * 1e6)
 			pd.DataFrame(telemetry).to_csv(results_filepath, index=False)
 
 			del model
@@ -139,7 +149,8 @@ if __name__ == '__main__':
 		telemetry['epoch'].append(1)
 		telemetry['loss'].append(-1)
 		telemetry['performance'].append(-1)
-		telemetry['elapsed_time'].append(end - start)
+		# telemetry['elapsed_time'].append(end - start)
+		telemetry['elapsed_time'].append(start.elapsed_time(end) * 1e6)
 
 		loss_func = nn.BCELoss()
 		optimizerD = optim.Adam(netD.parameters(), lr=lr, betas=(0.5, 0.999))
@@ -147,9 +158,12 @@ if __name__ == '__main__':
 
 		print('Benchmarks for DCGAN begin')
 		for epoch in range(1, epochs + 1):
-			start = time.perf_counter_ns()
+			# start = time.perf_counter_ns()
+			start.record()
 			gan_hist = fit_dcgan(netG, netD, device, celeba_dl, loss_func, epoch, optimizerG, optimizerD, nz, log_interval=log_interval)
-			end = time.perf_counter_ns()
+			# end = time.perf_counter_ns()
+			end.record()
+			torch.cuda.synchronize()
 
 			for stat in gan_hist:
 				gan_hist[stat] = np.mean(gan_hist[stat])		
@@ -159,20 +173,25 @@ if __name__ == '__main__':
 			telemetry['epoch'].append(epoch)
 			telemetry['loss'].append(f'{gan_hist["loss_G"]}|{gan_hist["loss_D"]}')
 			telemetry['performance'].append(f'{gan_hist["D_x"]}|{gan_hist["D_G_z1"]}|{gan_hist["D_G_z2"]}')
-			telemetry['elapsed_time'].append(end - start)
+			# telemetry['elapsed_time'].append(end - start)
+			telemetry['elapsed_time'].append(start.elapsed_time(end) * 1e6)
 			pd.DataFrame(telemetry).to_csv(results_filepath, index=False)
 
 		# generation
-		start = time.perf_counter_ns()
+		# start = time.perf_counter_ns()
+		start.record()
 		_ = generate(netG, device, test_batch_size=test_batch_size, save=False)
-		end = time.perf_counter_ns()
+		# end = time.perf_counter_ns()
+		end.record()
+		torch.cuda.synchronize()
 
 		telemetry['model_name'].append('DCGAN')
 		telemetry['type'].append('generation')
 		telemetry['epoch'].append(1)
 		telemetry['loss'].append(-1)
 		telemetry['performance'].append(-1)
-		telemetry['elapsed_time'].append(end - start)
+		# telemetry['elapsed_time'].append(end - start)
+		telemetry['elapsed_time'].append(start.elapsed_time(end) * 1e6)
 		pd.DataFrame(telemetry).to_csv(results_filepath, index=False)
 
 	#===============================================================================SODNet
@@ -189,9 +208,12 @@ if __name__ == '__main__':
 
 		for epoch in range(1, epochs + 1):
 
-			start = time.perf_counter_ns()
+			# start = time.perf_counter_ns()
+			start.record()
 			train_loss = fit_sodnet(model, device, train_dl, loss_func, optimizer)
-			end = time.perf_counter_ns()
+			# end = time.perf_counter_ns()
+			end.reocrd()
+			torch.cuda.synchronize()
 
 			telemetry['model_name'].append('SODNet')
 			telemetry['type'].append('training')
@@ -199,21 +221,26 @@ if __name__ == '__main__':
 			telemetry['loss'].append(train_loss)
 			telemetry['performance'].append(-1)
 			# IoU would have to be measured during training and therefore make the results incomparable
-			telemetry['elapsed_time'].append(end - start)
+			# telemetry['elapsed_time'].append(end - start)
+			telemetry['elapsed_time'].append(start.elapsed_time(end) * 1e6)
 			pd.DataFrame(telemetry).to_csv(results_filepath, index=False)
 
 			print('[%d]\tTrain loss: %.4f' % (epoch, train_loss))
 
-		start = time.perf_counter_ns()
+		# start = time.perf_counter_ns()
+		start.record()
 		eval_loss = test_sodnet(model, device, test_dl, loss_func)
-		end = time.perf_counter_ns()
+		# end = time.perf_counter_ns()
+		end.record()
+		torch.cuda.synchronize()
 
 		telemetry['model_name'].append('SODNet')
 		telemetry['type'].append('detection')
 		telemetry['epoch'].append(epoch)
 		telemetry['loss'].append(eval_loss)
 		telemetry['performance'].append(-1)
-		telemetry['elapsed_time'].append(end - start)
+		# telemetry['elapsed_time'].append(end - start)
+		telemetry['elapsed_time'].append(start.elapsed_time(end) * 1e6)
 		pd.DataFrame(telemetry).to_csv(results_filepath, index=False)
 
 		print('[%d]\tEval loss: %.4f' % (epoch, eval_loss))
