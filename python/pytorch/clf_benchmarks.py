@@ -14,7 +14,7 @@ from torchvision.models import resnet50, densenet121, mobilenet_v2, convnext_tin
 
 
 RUN_CLFS = True
-clfs = ['FullyConnectedNet', 'SimpleConvNet', 'ResNet-50', 'MobileNet-v2', 'ConvNeXt-Tiny']
+clfs = ['FullyConnectedNet', 'SimpleConvNet', 'ResNet-50', 'DenseNet-121', 'MobileNet-v2', 'ConvNeXt-Tiny']
 RUN_DCGAN = True
 RUN_SODNET = True
 

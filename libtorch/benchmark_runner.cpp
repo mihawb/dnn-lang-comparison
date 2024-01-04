@@ -20,6 +20,7 @@ bool RUN_FCNET          = true;
 bool RUN_SCVNET         = true;
 bool RUN_NATIVE_RESNET  = true;
 bool RUN_TORCHSCRIPT    = true;
+std::string models[] = {"ResNet-50", "DenseNet-121", "MobileNet-v2", "ConvNeXt-Tiny"};
 bool RUN_DCGAN          = true;
 bool RUN_SODNET         = true;
 
@@ -379,7 +380,7 @@ int main()
             cudaEventElapsedTime(&milliseconds, start, stop);
 
             std::cout << "Epoch time: " << milliseconds << " ms" << std::endl;
-            results_file << "NativeResNet50,training,"
+            results_file << "NativeResNet-50,training,"
                         << epoch << "," << running_loss / (batch_index + 1) << ","
                         << (float)running_corrects / (float)num_samples << ","
                         << milliseconds << std::endl;
@@ -413,7 +414,7 @@ int main()
         cudaEventElapsedTime(&milliseconds, start, stop);
 
         std::cout << "Eval time: " << milliseconds << " ms" << std::endl;
-        results_file << "NativeResNet50,inference,"
+        results_file << "NativeResNet-50,inference,"
                     << 1 << "," << running_loss / (double)batch_index << ","
                     << (float)corrects / (float)num_samples << ","
                     << milliseconds << std::endl;
@@ -421,8 +422,6 @@ int main()
 
     if (RUN_TORCHSCRIPT) //======================================serailized PyTorch models
     {
-        std::string models[] = {"ResNet-50", "DenseNet-121", "MobileNet-v2", "ConvNeXt-Tiny"};
-
         for (std::string model_name : models)
         {
             torch::jit::script::Module model_to_be_moved = torch::jit::load("./serialized_models/" + model_name + "_for_cifar10.pt");
