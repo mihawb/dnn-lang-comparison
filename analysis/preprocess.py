@@ -51,7 +51,7 @@ def get_results(results_root: str, save: bool=False, full: bool=True, **framewor
 
 	if frameworks.get('libtorch', False) or full:
 		libtorch = pd.read_csv(f'{results_root}/libtorch.csv')
-		libtorch = libtorch[(libtorch.type == 'training') | (libtorch.type == 'read')]
+		libtorch = libtorch[libtorch.type == 'training']
 		libtorch.insert(0, 'framework', 'LibTorch')
 		# kinda counterintuitive, but where changes values where the condition is false
 		libtorch.elapsed_time.where(libtorch.model_name != 'CELEBA', libtorch.elapsed_time / 1e6, inplace=True)
@@ -93,7 +93,7 @@ def get_results(results_root: str, save: bool=False, full: bool=True, **framewor
 
 	if frameworks.get('libtorch', False) or full:
 		libtorch = pd.read_csv(f'{results_root}/libtorch.csv')
-		libtorch = libtorch[(libtorch.type != 'training') & (libtorch.type != 'read')]
+		libtorch = libtorch[libtorch.type != 'training']
 		libtorch.insert(0, 'framework', 'LibTorch')
 		evaluation_to_concat.append(libtorch)
 
