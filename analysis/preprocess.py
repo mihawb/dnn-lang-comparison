@@ -38,6 +38,7 @@ def get_results(results_root: str, save: bool=False, full: bool=True, **framewor
 		fcnet = preprocess_matlab(f'{results_root}/matlab_FullyConnectedNet.csv')
 		scvnet = preprocess_matlab(f'{results_root}/matlab_SimpleConvNet.csv')
 		mnet = preprocess_matlab(f'{results_root}/matlab_MobileNet-v2.csv')
+		mnet = preprocess_matlab(f'{results_root}/matlab_ResNet-50.csv')
 
 	# training
 	training_to_concat = []
