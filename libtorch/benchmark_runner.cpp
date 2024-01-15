@@ -538,6 +538,7 @@ int main()
 
         std::cout << "Benchmarks for DCGAN begin." << std::endl;
         int latent_vec_size = 100;
+        int gen_batch_size = 1024;
         auto generator = std::make_shared<Generator>();
         auto discriminator = std::make_shared<Discriminator>();
 
@@ -631,7 +632,7 @@ int main()
         }
 
         torch::Tensor latent_vecs_batch = torch::randn(
-            {test_batch_size, latent_vec_size, 1, 1}, torch::TensorOptions().device(device));
+            {gen_batch_size, latent_vec_size, 1, 1}, torch::TensorOptions().device(device));
         cudaEventRecord(start);
         torch::Tensor res_images = generator->forward(latent_vecs_batch);
         cudaEventRecord(stop);

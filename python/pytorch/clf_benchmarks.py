@@ -127,6 +127,7 @@ if __name__ == '__main__':
 		ngf = 64
 		ndf = 64
 		lr = 1e-4
+		gen_batch_size = 1024
 
 		netG = Generator(nc, nz, ngf).to(device)
 		netD = Discriminator(nc, ndf).to(device)
@@ -169,7 +170,7 @@ if __name__ == '__main__':
 
 		# generation
 		start.record()
-		_ = generate(netG, device, test_batch_size=test_batch_size, save=False)
+		_ = generate(netG, device, test_batch_size=gen_batch_size, save=False)
 		end.record()
 		torch.cuda.synchronize()
 

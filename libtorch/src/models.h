@@ -89,6 +89,7 @@ struct ResBlock : torch::nn::Module
     torch::Tensor forward(torch::Tensor x);
 
     torch::nn::Sequential base1{nullptr}, base2{nullptr};
+    torch::nn::MaxPool2d mpool{nullptr};
 };
 
 struct SODNet : torch::nn::Module

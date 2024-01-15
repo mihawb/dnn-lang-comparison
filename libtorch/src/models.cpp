@@ -309,12 +309,14 @@ ResBlock::ResBlock(int in_channels, int out_channels)
 
 	this->base1 = register_module("base1", base1_unreg);
 	this->base2 = register_module("base2", base2_unreg);
+	this->mpool = register_module("pool", torch::nn::MaxPool2d(torch::nn::MaxPool2dOptions(2)));
 }
 
 torch::Tensor ResBlock::forward(torch::Tensor x)
 {
 	x = this->base1->forward(x) + x;
 	x = this->base2->forward(x);
+	x = this->mpool->forward(x);
 	return x;
 }
 
@@ -322,16 +324,9 @@ SODNet::SODNet(int in_channels, int first_output_channels)
 {
 	torch::nn::Sequential main_unreg{
 		ResBlock(in_channels, first_output_channels),
-		torch::nn::MaxPool2d(torch::nn::MaxPool2dOptions(2)),
-
 		ResBlock(first_output_channels, 2 * first_output_channels),
-		torch::nn::MaxPool2d(torch::nn::MaxPool2dOptions(2)),
-
 		ResBlock(2 * first_output_channels, 4 * first_output_channels),
-		torch::nn::MaxPool2d(torch::nn::MaxPool2dOptions(2)),
-
-		ResBlock(4 * first_output_channels, 8 * first_output_channels),
-		torch::nn::MaxPool2d(torch::nn::MaxPool2dOptions(2)),
+		ResBlock(4 * first_output_channels, 8 * first_output_channels),		
 
 		torch::nn::Conv2d(
 			torch::nn::Conv2dOptions(

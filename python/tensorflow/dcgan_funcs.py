@@ -228,7 +228,7 @@ def train_dcgan(config, telemetry, child_conn=None):
 		telemetry['elapsed_time'].append(end - start)
 
 	# generation
-	noise = tf.random.normal([config['test_batch_size'], config['latent_vec_size']])
+	noise = tf.random.normal([config['gen_batch_size'], config['latent_vec_size']])
 	start = time.perf_counter_ns()
 	_ = modelG(noise)
 	end = time.perf_counter_ns()

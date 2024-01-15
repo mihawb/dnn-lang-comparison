@@ -31,6 +31,7 @@ if __name__ == '__main__':
 		'batch_size': 96,
 		'batch_size_SOD': 8,
 		'test_batch_size': 128,
+		'gen_batch_size': 1000,
 		'test_batch_size_SOD': 16,
 		'epochs': 8,
 		'lr': 1e-4,

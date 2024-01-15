@@ -240,10 +240,12 @@ class ResBlock(nn.Module):
             nn.BatchNorm2d(out_channels),
             nn.ReLU(True)
         )
+        self.mpool = nn.MaxPool2d(2)
 
     def forward(self, x):
         x = self.base1(x) + x
         x = self.base2(x)
+        x = self.mpool(x)
         return x
     
 
@@ -252,13 +254,10 @@ class SODNet(nn.Module):
         super().__init__()
         self.main = nn.Sequential(
             ResBlock(in_channels, first_output_channels),
-            nn.MaxPool2d(2),
             ResBlock(first_output_channels, 2 * first_output_channels),
-            nn.MaxPool2d(2),
             ResBlock(2 * first_output_channels, 4 * first_output_channels),
-            nn.MaxPool2d(2),
             ResBlock(4 * first_output_channels, 8 * first_output_channels),
-            nn.MaxPool2d(2),
+
             nn.Conv2d(8 * first_output_channels, 16 * first_output_channels, kernel_size=3),
             nn.MaxPool2d(2),
             nn.Flatten(),

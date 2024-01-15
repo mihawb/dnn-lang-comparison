@@ -48,18 +48,18 @@ class ResBlock(tf.keras.Model):
 			tf.keras.layers.BatchNormalization(),
 			tf.keras.layers.ReLU()
 		])
-
-
 		self.base2 = tf.keras.Sequential([
 			tf.keras.layers.Conv2D(out_channels, 3, padding="same"),
 			tf.keras.layers.BatchNormalization(),
 			tf.keras.layers.ReLU()
 		])
+		self.mpool = tf.keras.layers.MaxPool2D((2,2))
 
 
 	def call(self, x):
 		x = self.base1(x) + x
 		x = self.base2(x)
+		x = self.mpool(x)
 		return x
 	
 
@@ -68,16 +68,9 @@ def SODNetBuilder(in_channels, first_output_channels):
 		tf.keras.Input(shape=(256, 256, 3)),
 
 		ResBlock(in_channels, first_output_channels),
-		tf.keras.layers.MaxPool2D((2,2)),
-
 		ResBlock(first_output_channels, 2 * first_output_channels),
-		tf.keras.layers.MaxPool2D((2,2)),
-
 		ResBlock(2 * first_output_channels, 4 * first_output_channels),
-		tf.keras.layers.MaxPool2D((2,2)),
-
 		ResBlock(4 * first_output_channels, 8 * first_output_channels),
-		tf.keras.layers.MaxPool2D((2,2)),
 		
 		tf.keras.layers.Conv2D(16 * first_output_channels, 3),
 		tf.keras.layers.MaxPool2D((2,2)),
