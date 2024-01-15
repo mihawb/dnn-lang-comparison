@@ -12,6 +12,9 @@ import torchvision
 
 
 def fit_dcgan(generator, discriminator, device, loader, loss_func, epoch, optimizerG, optimizerD, latent_vec_size, log_interval=100, silent=False):
+	generator.train()
+	discriminator.train()
+
 	real_label = 1.
 	fake_label = 0.
 	history = {
@@ -79,6 +82,7 @@ def fit_dcgan(generator, discriminator, device, loader, loss_func, epoch, optimi
 
 
 def generate(generator, device, test_batch_size=64, latent_vec_size=100, latent_vecs_batch=None, save=False):
+	generator.eval()
 	# batch size not smaller than 64
 	if latent_vecs_batch is None:
 		latent_vecs_batch = torch.randn(test_batch_size, latent_vec_size, 1, 1, device=device)

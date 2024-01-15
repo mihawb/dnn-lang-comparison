@@ -38,7 +38,7 @@ def get_results(results_root: str, save: bool=False, full: bool=True, **framewor
 		fcnet = preprocess_matlab(f'{results_root}/matlab_FullyConnectedNet.csv')
 		scvnet = preprocess_matlab(f'{results_root}/matlab_SimpleConvNet.csv')
 		mnet = preprocess_matlab(f'{results_root}/matlab_MobileNet-v2.csv')
-		mnet = preprocess_matlab(f'{results_root}/matlab_ResNet-50.csv')
+		rnet = preprocess_matlab(f'{results_root}/matlab_ResNet-50.csv')
 
 	# training
 	training_to_concat = []
@@ -74,7 +74,7 @@ def get_results(results_root: str, save: bool=False, full: bool=True, **framewor
 		training_to_concat.append(cudnn)
 
 	if frameworks.get('matlab', False) or full:
-		matlab = pd.concat([fcnet, scvnet, mnet])
+		matlab = pd.concat([fcnet, scvnet, mnet, rnet])
 		matlab = matlab[matlab.type == 'training']
 		matlab.insert(0, 'framework', 'Matlab')
 		training_to_concat.append(matlab)
@@ -112,7 +112,7 @@ def get_results(results_root: str, save: bool=False, full: bool=True, **framewor
 		evaluation_to_concat.append(cudnn)
 
 	if frameworks.get('matlab', False) or full:
-		matlab = pd.concat([fcnet, scvnet, mnet])
+		matlab = pd.concat([fcnet, scvnet, mnet, rnet])
 		matlab = matlab[matlab.type != 'training']
 		matlab.insert(0, 'framework', 'Matlab')
 		matlab.elapsed_time *= 1e3

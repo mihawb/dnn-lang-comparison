@@ -230,7 +230,7 @@ def train_dcgan(config, telemetry, child_conn=None):
 	# generation
 	noise = tf.random.normal([config['gen_batch_size'], config['latent_vec_size']])
 	start = time.perf_counter_ns()
-	_ = modelG(noise)
+	_ = modelG(noise, training=False)
 	end = time.perf_counter_ns()
 
 	# generation telemetry

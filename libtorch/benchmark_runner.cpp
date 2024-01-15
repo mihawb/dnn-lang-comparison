@@ -631,6 +631,9 @@ int main()
                         << milliseconds << std::endl;
         }
 
+        generator->eval();
+        discriminator->eval();
+
         torch::Tensor latent_vecs_batch = torch::randn(
             {gen_batch_size, latent_vec_size, 1, 1}, torch::TensorOptions().device(device));
         cudaEventRecord(start);
