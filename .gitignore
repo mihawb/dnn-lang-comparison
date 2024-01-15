@@ -22,3 +22,7 @@ cpp_old/
 *.png
 *.jpg
 *.pt
+*.bkp
+*.svg
+
+!paper/*.png
