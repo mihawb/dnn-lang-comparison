@@ -66,6 +66,14 @@ def show_image_with_bbox(df, image, bbox, idx=None, ax=None):
 		if idx is not None: plt.title(df.loc[idx, 'imgName'])
 
 
+def get_image_with_bbox(df, image, bbox, idx=None):
+	w, h = (50, 50)
+	c_x, c_y = bbox
+	image = image.copy()
+	ImageDraw.Draw(image).rectangle(((c_x-w//2, c_y-h//2), (c_x+w//2, c_y+h//2)), outline='green', width=2)
+	return image
+
+
 def show_image_with_two_bboxes(image, target_bbox, eval_bbox, title, ax=None):
 	w, h = (50, 50)
 	t_c_x, t_c_y = target_bbox
