@@ -1,5 +1,5 @@
 # Bare cuDNN performance tests
-Based on Jack Han's project available [here](https://github.com/haanjack/mnist-cudnn).  
+Based on Jaegeun Han's project available [here](https://github.com/haanjack/mnist-cudnn).  
 Modifications include measuring training and inference time, support for multiple epochs training, etc.  
 With author's copyright notice attached.
 
