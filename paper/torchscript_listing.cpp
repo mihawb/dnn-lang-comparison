@@ -2,8 +2,8 @@
 std::shared_ptr<torch::nn::Module> model1 = std::make_shared<torch::nn::Module>();
 
 torch::jit::script::Module model2_to_be_moved = torch::jit::load("model.pt");
-std::shared_ptr<torch::jit::script::Module> model2
-	= std::make_shared<torch::jit::script::Module>(model_to_be_moved);
+std::shared_ptr<torch::jit::script::Module> model2 =
+	std::make_shared<torch::jit::script::Module>(model2_to_be_moved);
 
 // propagacja w przód
 torch::Tensor input = ...;
