@@ -128,3 +128,123 @@ def get_results(results_root: str, save: bool=False, full: bool=True, **framewor
 		evaluation.to_csv(f'{results_root}/evaluation_concat-{idx}.csv', index=False)
 
 	return training, evaluation
+
+
+def preprocess_cudnn_mod(results_root: str) -> pd.DataFrame:
+	fcnet = pd.read_csv(f'{results_root}/cudnn_fcnet.csv')
+	fcnet.model_name = 'FullyConnectedNet'
+
+	return fcnet
+
+
+def mean_aggregate_results(ts: list[pd.DataFrame], es: list[pd.DataFrame]) -> tuple[pd.DataFrame, pd.DataFrame]:
+	for t, e in zip(ts, es):
+		t.set_index(['framework', 'model_name', 'epoch'], inplace=True)
+		e.set_index(['framework', 'model_name'], inplace=True)
+
+	res = []
+	for rs in [ts, es]:
+		acc_rs = rs[0].copy()
+		for i, r in enumerate(rs[1:], 1):
+			acc_rs = acc_rs.merge(r, left_index=True, right_index=True, suffixes=('', f'_{i}'))
+
+		mean_rs = acc_rs.mean(axis=1)
+		mean_rs = mean_rs.reset_index()
+		mean_rs.rename(columns={0: 'elapsed_time'}, inplace=True)
+		res.append(mean_rs)
+
+	return tuple(res)
+
+
+def get_results_mod(results_root: str, save: bool=False, full: bool=True, **frameworks) -> tuple[pd.DataFrame, pd.DataFrame]:
+	if frameworks.get('matlab', False) or full:
+		fcnet = preprocess_matlab(f'{results_root}/matlab_FullyConnectedNet.csv')
+
+	# training
+	training_to_concat = []
+
+	if frameworks.get('pytorch', False) or full:
+		pytorch = pd.read_csv(f'{results_root}/pytorch.csv')
+		pytorch = pytorch[pytorch.type == 'training']
+		pytorch.insert(0, 'framework', 'PyTorch')
+		pytorch.elapsed_time /= 1e9
+		training_to_concat.append(pytorch)
+
+	if frameworks.get('libtorch', False) or full:
+		libtorch = pd.read_csv(f'{results_root}/libtorch.csv')
+		libtorch = libtorch[libtorch.type == 'training']
+		libtorch.insert(0, 'framework', 'LibTorch')
+		# kinda counterintuitive, but where changes values where the condition is false
+		libtorch.elapsed_time.where(libtorch.model_name != 'CELEBA', libtorch.elapsed_time / 1e6, inplace=True)
+		libtorch.elapsed_time.where(libtorch.model_name == 'CELEBA', libtorch.elapsed_time / 1e3, inplace=True)
+		training_to_concat.append(libtorch)
+
+	if frameworks.get('tensorflow', False) or full:
+		tensorflow = pd.read_csv(f'{results_root}/tensorflow.csv')
+		tensorflow = tensorflow[tensorflow.type == 'training']
+		tensorflow.insert(0, 'framework', 'TensorFlow')
+		tensorflow.elapsed_time /= 1e9
+		training_to_concat.append(tensorflow)
+
+	if frameworks.get('cudnn', False) or full:
+		cudnn = preprocess_cudnn_mod(results_root)
+		cudnn = cudnn[cudnn.type == 'training']
+		cudnn.insert(0, 'framework', 'cuDNN')
+		cudnn.elapsed_time /= 1e3
+		training_to_concat.append(cudnn)
+
+	if frameworks.get('matlab', False) or full:
+		matlab = fcnet.copy()
+		matlab = matlab[matlab.type == 'training']
+		matlab.insert(0, 'framework', 'Matlab')
+		training_to_concat.append(matlab)
+
+	training = pd.concat(training_to_concat)
+	training.drop(columns=['type', 'loss', 'performance'], inplace=True)
+
+	# evaluation
+	evaluation_to_concat = []
+
+	if frameworks.get('pytorch', False) or full:
+		pytorch = pd.read_csv(f'{results_root}/pytorch.csv')
+		pytorch = pytorch[pytorch.type != 'training']
+		pytorch.insert(0, 'framework', 'PyTorch')
+		pytorch.elapsed_time /= 1e6
+		evaluation_to_concat.append(pytorch)
+
+	if frameworks.get('libtorch', False) or full:
+		libtorch = pd.read_csv(f'{results_root}/libtorch.csv')
+		libtorch = libtorch[libtorch.type != 'training']
+		libtorch.insert(0, 'framework', 'LibTorch')
+		evaluation_to_concat.append(libtorch)
+
+	if frameworks.get('tensorflow', False) or full:
+		tensorflow = pd.read_csv(f'{results_root}/tensorflow.csv')
+		tensorflow = tensorflow[tensorflow.type != 'training']
+		tensorflow.insert(0, 'framework', 'TensorFlow')
+		tensorflow.elapsed_time /= 1e6
+		evaluation_to_concat.append(tensorflow)
+
+	if frameworks.get('cudnn', False) or full:
+		cudnn = preprocess_cudnn_mod(results_root)
+		cudnn = cudnn[cudnn.type != 'training']
+		cudnn.insert(0, 'framework', 'cuDNN')
+		evaluation_to_concat.append(cudnn)
+
+	if frameworks.get('matlab', False) or full:
+		matlab = fcnet.copy()
+		matlab = matlab[matlab.type != 'training']
+		matlab.insert(0, 'framework', 'Matlab')
+		matlab.elapsed_time *= 1e3
+		evaluation_to_concat.append(matlab)
+
+	evaluation = pd.concat(evaluation_to_concat)
+	evaluation.drop(columns=['type', 'loss', 'performance', 'epoch'], inplace=True)
+	evaluation.reset_index(drop=True, inplace=True)
+
+	if save:
+		idx = time.time_ns()
+		training.to_csv(f'{results_root}/training_concat-{idx}.csv', index=False)
+		evaluation.to_csv(f'{results_root}/evaluation_concat-{idx}.csv', index=False)
+
+	return training, evaluation
