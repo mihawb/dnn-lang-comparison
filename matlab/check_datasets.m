@@ -37,3 +37,20 @@ for i = 17:20
     imshow(img)
     title(cifar_labels(i))
 end
+
+%% CELEB-A
+celeba_location = "../datasets/celeba_tiny/img_align_celeba/";
+celeba_imgs = loadCELEBA(celeba_location, 64, 16);
+figure(4);
+
+for i = 1:16
+    subplot(4,4,i);
+    imshow(celeba_imgs(:,:,:,i))
+end
+
+%% CELEBA-A Tiny loading benchmark
+N = 30000;
+t_begin = tic;
+loadCELEBA(celeba_location, 64, N);
+t_end = toc;
+fprintf("Loading %d CELEB-A images took %d seconds.\n", N, t_end - t_begin);
