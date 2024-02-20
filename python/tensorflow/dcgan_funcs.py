@@ -241,6 +241,20 @@ def train_dcgan(config, telemetry, child_conn=None):
 	telemetry['performance'].append(-1)
 	telemetry['elapsed_time'].append(end - start)
 
+	# latency
+	for rep in range(config['epochs']):
+		sample = tf.random.normal([1, config['latent_vec_size']])
+		start = time.perf_counter_ns()
+		_ = modelG(sample, training=False)
+		end = time.perf_counter_ns()
+
+		telemetry['model_name'].append('DCGAN')
+		telemetry['type'].append('latency')
+		telemetry['epoch'].append(rep)
+		telemetry['loss'].append(-1)
+		telemetry['performance'].append(-1)
+		telemetry['elapsed_time'].append(end - start)
+
 	pd.DataFrame(telemetry).to_csv(config['results_filename'], index=False)
 	if child_conn is not None: child_conn.send(telemetry)
 

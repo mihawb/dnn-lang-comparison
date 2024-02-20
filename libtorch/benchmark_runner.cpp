@@ -16,11 +16,11 @@
 #include "celeba.h"
 #include "adam.h"
 
+std::string models[] = {"ResNet-50", "DenseNet-121", "MobileNet-v2", "ConvNeXt-Tiny"};
 bool RUN_FCNET          = true;
 bool RUN_SCVNET         = true;
 bool RUN_NATIVE_RESNET  = true;
 bool RUN_TORCHSCRIPT    = true;
-std::string models[] = {"ResNet-50", "DenseNet-121", "MobileNet-v2", "ConvNeXt-Tiny"};
 bool RUN_DCGAN          = true;
 bool RUN_SODNET         = true;
 
@@ -127,7 +127,7 @@ int main()
     float lr = 0.01;
     float momentum = 0.9;
     int num_classes = 10;
-    int log_interval = 200;
+    int log_interval = 100;
 
     cudaEvent_t start, stop;
     cudaEventCreate(&start);
@@ -553,7 +553,7 @@ int main()
         generator->train();
         discriminator->train();
 
-        for (size_t epoch = 1; epoch < epochs; ++epoch)
+        for (size_t epoch = 1; epoch <= epochs; ++epoch)
         {
             std::cout << "Epoch " << epoch << " begins." << std::endl;
             size_t batch_index = 0;
@@ -563,7 +563,7 @@ int main()
             cudaEventRecord(start);
 
             int max_batch = celeba.get_max_batch_id();
-            for (; batch_index < max_batch; /* incremented in telemetry */)
+            while (batch_index < max_batch)
             {
                 disc_optimizer.zero_grad();
                 torch::Tensor real_cpu = celeba.get_batch_by_id(batch_index).to(device);
@@ -604,7 +604,7 @@ int main()
 
                 if (++batch_index % log_interval == 0)
                 {
-                    std::cout << "[" << epoch << "]\t[" << batch_index
+                    std::cout << "[" << epoch << "]\t[" << batch_index << " / " << max_batch
                             << "]\tLoss_G: " << errG.item<double>()
                             << "\tLoss_D: " << errD.item<double>()
                             << "\tD(x): " << D_x.toDouble()

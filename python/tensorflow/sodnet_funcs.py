@@ -3,6 +3,7 @@ sys.path.append('..')
 from load_datasets import load_adam_image
 from clf_funcs import setup, PerfCounterCallback
 
+import time
 import numpy as np
 import pandas as pd
 from sklearn.model_selection import train_test_split
@@ -113,6 +114,20 @@ def train_sodnet(config, telemetry, child_conn):
 	telemetry['loss'].append(eval_history)
 	telemetry['performance'].append(-1)
 	# epoch and elapsed_time handeled by PerfCounterCallback
+
+	# latency
+	batch = next(iter(test_ds))
+	for rep in range(config['epochs']):
+		start = time.perf_counter_ns()
+		_ = model(batch[rep], training=False)
+		end = time.perf_counter_ns()
+
+		telemetry['model_name'].append('SODNet')
+		telemetry['type'].append('latency')
+		telemetry['epoch'].append(rep)
+		telemetry['loss'].append(-1)
+		telemetry['performance'].append(-1)
+		telemetry['elapsed_time'].append(end - start)
 
 	child_conn.send(telemetry)
 	pd.DataFrame(telemetry).to_csv(config['results_filename'], index=False)

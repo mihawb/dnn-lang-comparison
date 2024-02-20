@@ -14,9 +14,10 @@ from torchvision.models import resnet50, densenet121, mobilenet_v2, convnext_tin
 
 
 RUN_CLFS = True
-clfs = ['FullyConnectedNet', 'SimpleConvNet', 'ResNet-50', 'DenseNet-121', 'MobileNet-v2', 'ConvNeXt-Tiny']
-RUN_DCGAN = True
-RUN_SODNET = True
+# clfs = ['FullyConnectedNet', 'SimpleConvNet', 'ResNet-50', 'DenseNet-121', 'MobileNet-v2', 'ConvNeXt-Tiny']
+clfs = ['FullyConnectedNet']
+RUN_DCGAN = False
+RUN_SODNET = False
 
 
 def env_builder(name: str, num_classes: int, batch_size: int, test_batch_size: int): 
@@ -117,6 +118,26 @@ if __name__ == '__main__':
 			telemetry['elapsed_time'].append(start.elapsed_time(end) * 1e6)
 			pd.DataFrame(telemetry).to_csv(results_filepath, index=False)
 
+			# single sample latency
+			with torch.no_grad():
+				batch = next(iter(test_dl))
+				batch = batch[0].to(device)
+				for rep in range(epochs):
+					sample = batch[rep].unsqueeze(dim=0)
+					start.record()
+					_ = model(sample)
+					end.record()
+					torch.cuda.synchronize()
+
+					telemetry['model_name'].append(model_name)
+					telemetry['type'].append('latency')
+					telemetry['epoch'].append(rep)
+					telemetry['loss'].append(-1)
+					telemetry['performance'].append(-1)
+					telemetry['elapsed_time'].append(start.elapsed_time(end) * 1e6)
+
+			pd.DataFrame(telemetry).to_csv(results_filepath, index=False)
+
 			del model
 
 	#================================================================================DCGAN
@@ -182,6 +203,26 @@ if __name__ == '__main__':
 		telemetry['elapsed_time'].append(start.elapsed_time(end) * 1e6)
 		pd.DataFrame(telemetry).to_csv(results_filepath, index=False)
 
+		# single sample latency
+		with torch.no_grad():
+			batch = next(iter(celeba_dl))
+			batch = batch[0].to(device)
+			for rep in range(epochs):
+				sample = batch[rep].unsqueeze(dim=0)
+				start.record()
+				_ = netG(sample)
+				end.record()
+				torch.cuda.synchronize()
+
+				telemetry['model_name'].append('DCGAN')
+				telemetry['type'].append('latency')
+				telemetry['epoch'].append(rep)
+				telemetry['loss'].append(-1)
+				telemetry['performance'].append(-1)
+				telemetry['elapsed_time'].append(start.elapsed_time(end) * 1e6)
+
+		pd.DataFrame(telemetry).to_csv(results_filepath, index=False)
+
 	#===============================================================================SODNet
 
 	if RUN_SODNET:
@@ -224,3 +265,23 @@ if __name__ == '__main__':
 		pd.DataFrame(telemetry).to_csv(results_filepath, index=False)
 
 		print('[%d]\tEval loss: %.4f' % (1, eval_loss))
+
+		# single sample latency
+		with torch.no_grad():
+			batch = next(iter(test_dl))
+			batch = batch[0].to(device)
+			for rep in range(epochs):
+				sample = batch[rep].unsqueeze(dim=0)
+				start.record()
+				_ = model(sample)
+				end.record()
+				torch.cuda.synchronize()
+
+				telemetry['model_name'].append('SODNet')
+				telemetry['type'].append('latency')
+				telemetry['epoch'].append(rep)
+				telemetry['loss'].append(-1)
+				telemetry['performance'].append(-1)
+				telemetry['elapsed_time'].append(start.elapsed_time(end) * 1e6)
+
+		pd.DataFrame(telemetry).to_csv(results_filepath, index=False)

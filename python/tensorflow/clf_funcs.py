@@ -2,7 +2,9 @@ import sys
 sys.path.append('..')
 from load_datasets import load_mnist_imgs_and_labels
 
+import time
 import pathlib
+import numpy as np
 import pandas as pd
 from time import perf_counter_ns
 
@@ -104,6 +106,35 @@ def train_single_model(model_name, config, telemetry, child_conn):
 	telemetry['loss'].append(eval_history[0])
 	telemetry['performance'].append(eval_history[1])
 	# epoch and elapsed_time handeled by PerfCounterCallback
+
+	# single sample latency
+	if isinstance(test_ds, tuple):
+		for rep in range(config['epochs']):
+			sample = np.expand_dims(test_ds[0][rep], axis=0)
+			start = time.perf_counter_ns()
+			_ = model(sample, training=False)
+			end = time.perf_counter_ns()
+
+			telemetry['model_name'].append(model_name)
+			telemetry['type'].append('latency')
+			telemetry['loss'].append(-1)
+			telemetry['performance'].append(-1)
+			telemetry['epoch'].append(rep)
+			telemetry['elapsed_time'].append(end - start)
+	else:
+		batch = next(iter(test_ds))[0]
+		for rep in range(config['epochs']):
+			sample = np.expand_dims(batch[rep], axis=0)
+			start = time.perf_counter_ns()
+			_ = model(sample, training=False)
+			end = time.perf_counter_ns()
+
+			telemetry['model_name'].append(model_name)
+			telemetry['type'].append('latency')
+			telemetry['loss'].append(-1)
+			telemetry['performance'].append(-1)
+			telemetry['epoch'].append(rep)
+			telemetry['elapsed_time'].append(end - start)
 
 	child_conn.send(telemetry)
 	pd.DataFrame(telemetry).to_csv(config['results_filename'], index=False)
