@@ -82,7 +82,7 @@ def train_single_model(model_name, config, telemetry, child_conn):
 		)
 
 	telemetry['model_name'].extend([model_name] * config['epochs'])
-	telemetry['type'].extend(['training'] * config['epochs'])
+	telemetry['phase'].extend(['training'] * config['epochs'])
 	telemetry['loss'].extend(train_history.history['loss'])
 	telemetry['performance'].extend(train_history.history['val_accuracy'])
 	# epoch and elapsed_time handeled by PerfCounterCallback
@@ -102,7 +102,7 @@ def train_single_model(model_name, config, telemetry, child_conn):
 		)
 
 	telemetry['model_name'].append(model_name)
-	telemetry['type'].append('inference')
+	telemetry['phase'].append('inference')
 	telemetry['loss'].append(eval_history[0])
 	telemetry['performance'].append(eval_history[1])
 	# epoch and elapsed_time handeled by PerfCounterCallback
@@ -116,7 +116,7 @@ def train_single_model(model_name, config, telemetry, child_conn):
 			end = time.perf_counter_ns()
 
 			telemetry['model_name'].append(model_name)
-			telemetry['type'].append('latency')
+			telemetry['phase'].append('latency')
 			telemetry['loss'].append(-1)
 			telemetry['performance'].append(-1)
 			telemetry['epoch'].append(rep)
@@ -130,7 +130,7 @@ def train_single_model(model_name, config, telemetry, child_conn):
 			end = time.perf_counter_ns()
 
 			telemetry['model_name'].append(model_name)
-			telemetry['type'].append('latency')
+			telemetry['phase'].append('latency')
 			telemetry['loss'].append(-1)
 			telemetry['performance'].append(-1)
 			telemetry['epoch'].append(rep)
@@ -144,7 +144,7 @@ def train_single_model(model_name, config, telemetry, child_conn):
 
 def get_cifar10_data(preprocess=None):
 	(x_train, y_train), (x_test, y_test) = tf.keras.datasets.cifar10.load_data()
-	x_train, x_test = x_train.astype('float32'), x_test.astype('float32')
+	x_train, x_test = x_train.asphase('float32'), x_test.asphase('float32')
 
 	if preprocess is not None:
 		x_train, x_test = preprocess(x_train), preprocess(x_test)

@@ -159,7 +159,7 @@ def train_dcgan(config, telemetry, child_conn=None):
 	end = time.perf_counter_ns()
 
 	telemetry['model_name'].append('CELEBA')
-	telemetry['type'].append('read')
+	telemetry['phase'].append('read')
 	telemetry['epoch'].append(1)
 	telemetry['loss'].append(-1)
 	telemetry['performance'].append(-1)
@@ -171,7 +171,7 @@ def train_dcgan(config, telemetry, child_conn=None):
 	modelD = DiscriminatorBulider()
 	optG = tf.keras.optimizers.Adam(config['lr'])
 	optD = tf.keras.optimizers.Adam(config['lr'])
-	# both need to be of tf.Variable type for tf.Funciton train_step
+	# both need to be of tf.Variable phase for tf.Funciton train_step
 	loss_func = config['loss_func_GAN']
 	latent_vec_size = config['latent_vec_size']
 
@@ -221,7 +221,7 @@ def train_dcgan(config, telemetry, child_conn=None):
 			history[stat] = np.sum(history[stat]) / len(history[stat])
 
 		telemetry['model_name'].append('DCGAN')
-		telemetry['type'].append('training')
+		telemetry['phase'].append('training')
 		telemetry['epoch'].append(epoch)
 		telemetry['loss'].append(f'{history["loss_G"]}|{history["loss_D"]}')
 		telemetry['performance'].append(f'{history["D_x"]}|{history["D_G_z1"]}|{history["D_G_z2"]}')
@@ -235,7 +235,7 @@ def train_dcgan(config, telemetry, child_conn=None):
 
 	# generation telemetry
 	telemetry['model_name'].append('DCGAN')
-	telemetry['type'].append('generation')
+	telemetry['phase'].append('generation')
 	telemetry['epoch'].append(1)
 	telemetry['loss'].append(-1)
 	telemetry['performance'].append(-1)
@@ -249,8 +249,8 @@ def train_dcgan(config, telemetry, child_conn=None):
 		end = time.perf_counter_ns()
 
 		telemetry['model_name'].append('DCGAN')
-		telemetry['type'].append('latency')
-		telemetry['epoch'].append(rep)
+		telemetry['phase'].append('latency')
+		telemetry['epoch'].append(rep + 1)
 		telemetry['loss'].append(-1)
 		telemetry['performance'].append(-1)
 		telemetry['elapsed_time'].append(end - start)

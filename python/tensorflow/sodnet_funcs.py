@@ -98,7 +98,7 @@ def train_sodnet(config, telemetry, child_conn):
 	)
 	
 	telemetry['model_name'].extend(['SODNet'] * config['epochs'])
-	telemetry['type'].extend(['training'] * config['epochs'])
+	telemetry['phase'].extend(['training'] * config['epochs'])
 	telemetry['loss'].extend(train_history.history['loss'])
 	telemetry['performance'].extend([-1] * config['epochs']) # no validation to so as to be comparable to pytorch
 	# epoch and elapsed_time handeled by PerfCounterCallback
@@ -110,7 +110,7 @@ def train_sodnet(config, telemetry, child_conn):
 	)
 
 	telemetry['model_name'].append('SODNet')
-	telemetry['type'].append('detection')
+	telemetry['phase'].append('detection')
 	telemetry['loss'].append(eval_history)
 	telemetry['performance'].append(-1)
 	# epoch and elapsed_time handeled by PerfCounterCallback
@@ -118,13 +118,14 @@ def train_sodnet(config, telemetry, child_conn):
 	# latency
 	batch = next(iter(test_ds))
 	for rep in range(config['epochs']):
+		sample = np.expand_dims(batch[0][rep], axis=0)
 		start = time.perf_counter_ns()
-		_ = model(batch[rep], training=False)
+		_ = model(sample, training=False)
 		end = time.perf_counter_ns()
 
 		telemetry['model_name'].append('SODNet')
-		telemetry['type'].append('latency')
-		telemetry['epoch'].append(rep)
+		telemetry['phase'].append('latency')
+		telemetry['epoch'].append(rep + 1)
 		telemetry['loss'].append(-1)
 		telemetry['performance'].append(-1)
 		telemetry['elapsed_time'].append(end - start)
