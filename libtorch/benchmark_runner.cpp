@@ -119,7 +119,7 @@ int main()
 
     std::ofstream results_file;
     results_file.open("../results/libtorch.csv", std::ios::out);
-    results_file << "model_name,type,epoch,loss,performance,elapsed_time" << std::endl;
+    results_file << "model_name,phase,epoch,loss,performance,elapsed_time" << std::endl;
 
     int batch_size = 96;
     int test_batch_size = 128;
@@ -225,31 +225,61 @@ int main()
         int corrects = 0;
         int num_samples = 0;
 
-        cudaEventRecord(start);
-        for (auto &batch : *test_dl_mnist)
         {
-            torch::Tensor batch_data = batch.data.to(device);
-            torch::Tensor batch_target = batch.target.to(device);
+            torch::NoGradGuard no_grad;
 
-            torch::Tensor outputs = model_fcnet->forward(batch_data);
-            torch::Tensor loss = torch::nll_loss(outputs, batch_target);
-            torch::Tensor predictions = std::get<1>(torch::max(outputs, 1));
+            cudaEventRecord(start);
+            for (auto &batch : *test_dl_mnist)
+            {
+                torch::Tensor batch_data = batch.data.to(device);
+                torch::Tensor batch_target = batch.target.to(device);
 
-            batch_index++;
-            corrects += torch::sum(predictions == batch_target).item<int>();
-            num_samples += batch.data.size(0);
-            running_loss += loss.item<double>();
+                torch::Tensor outputs = model_fcnet->forward(batch_data);
+                torch::Tensor loss = torch::nll_loss(outputs, batch_target);
+                torch::Tensor predictions = std::get<1>(torch::max(outputs, 1));
+
+                batch_index++;
+                corrects += torch::sum(predictions == batch_target).item<int>();
+                num_samples += batch.data.size(0);
+                running_loss += loss.item<double>();
+            }
+
+            cudaEventRecord(stop);
+            cudaEventSynchronize(stop);
+            cudaEventElapsedTime(&milliseconds, start, stop);
         }
-
-        cudaEventRecord(stop);
-        cudaEventSynchronize(stop);
-        cudaEventElapsedTime(&milliseconds, start, stop);
 
         std::cout << "Eval time: " << milliseconds << " ms" << std::endl;
         results_file << "FullyConnectedNet,inference,"
                     << 1 << "," << running_loss / (double)batch_index << ","
                     << (float)corrects / (float)num_samples << ","
                     << milliseconds << std::endl;
+
+        {
+            torch::NoGradGuard no_grad;
+
+            for (auto &batch : *test_dl_mnist)
+            {
+                torch::Tensor batch_data = batch.data.to(device);
+
+                for (int i = 1; i <= epochs; i++)
+                {
+                    torch::Tensor sample = batch_data[i];
+                    sample = sample.unsqueeze(0);
+
+                    cudaEventRecord(start);
+                    torch::Tensor outputs = model_fcnet->forward(batch_data);
+                    cudaEventRecord(stop);
+                    cudaEventSynchronize(stop);
+                    cudaEventElapsedTime(&milliseconds, start, stop);
+                    
+                    results_file << "FullyConnectedNet,latency," << i << ",-1,-1," 
+                                 << milliseconds << std::endl;
+                }
+
+                break;
+            }
+        }
     }
 
     if (RUN_SCVNET) //=======================================================SimpleConvNet
@@ -308,32 +338,63 @@ int main()
         int corrects = 0;
         int num_samples = 0;
 
-        cudaEventRecord(start);
-        for (auto &batch : *test_dl_mnist)
         {
-            torch::Tensor batch_data = batch.data.to(device);
-            torch::Tensor batch_target = batch.target.to(device);
+            torch::NoGradGuard no_grad;
 
-            torch::Tensor outputs = model_scvnet->forward(batch_data);
-            torch::Tensor loss = torch::nll_loss(outputs, batch_target);
-            torch::Tensor predictions = std::get<1>(torch::max(outputs, 1));
-            int corrects = torch::sum(predictions == batch_target).item<int>();
+            cudaEventRecord(start);
+            for (auto &batch : *test_dl_mnist)
+            {
+                torch::Tensor batch_data = batch.data.to(device);
+                torch::Tensor batch_target = batch.target.to(device);
 
-            batch_index++;
-            corrects += torch::sum(predictions == batch_target).item<int>();
-            num_samples += batch.data.size(0);
-            running_loss += loss.item<double>();
+                torch::Tensor outputs = model_scvnet->forward(batch_data);
+                torch::Tensor loss = torch::nll_loss(outputs, batch_target);
+                torch::Tensor predictions = std::get<1>(torch::max(outputs, 1));
+                int corrects = torch::sum(predictions == batch_target).item<int>();
+
+                batch_index++;
+                corrects += torch::sum(predictions == batch_target).item<int>();
+                num_samples += batch.data.size(0);
+                running_loss += loss.item<double>();
+            }
+
+            cudaEventRecord(stop);
+            cudaEventSynchronize(stop);
+            cudaEventElapsedTime(&milliseconds, start, stop);
         }
 
-        cudaEventRecord(stop);
-        cudaEventSynchronize(stop);
-        cudaEventElapsedTime(&milliseconds, start, stop);
 
         std::cout << "Eval time: " << milliseconds << " ms" << std::endl;
         results_file << "SimpleConvNet,inference,"
                     << 1 << "," << running_loss / (double)batch_index << ","
                     << (float)corrects / (float)num_samples << ","
                     << milliseconds << std::endl;
+
+        {
+            torch::NoGradGuard no_grad;
+
+            for (auto &batch : *test_dl_mnist)
+            {
+                torch::Tensor batch_data = batch.data.to(device);
+
+                for (int i = 1; i <= epochs; i++)
+                {
+                    torch::Tensor sample = batch_data[i];
+                    sample = sample.unsqueeze(0);
+
+                    cudaEventRecord(start);
+                    torch::Tensor outputs = model_scvnet->forward(batch_data);
+                    cudaEventRecord(stop);
+                    cudaEventSynchronize(stop);
+                    cudaEventElapsedTime(&milliseconds, start, stop);
+                    
+                    results_file << "SimpleConvNet,latency," << i << ",-1,-1," 
+                                 << milliseconds << std::endl;
+                }
+
+                break;
+            }
+        }
     }
 
     if (RUN_NATIVE_RESNET) //====================================================ResNet-50
@@ -392,32 +453,63 @@ int main()
         int corrects = 0;
         int num_samples = 0;
 
-        cudaEventRecord(start);
-        for (auto &batch : *test_dl_cifar10)
         {
-            torch::Tensor batch_data = batch.data.to(device);
-            torch::Tensor batch_target = batch.target.to(device);
+            torch::NoGradGuard no_grad;
 
-            torch::Tensor outputs = model_resnet50_native->forward(batch_data);
-            torch::Tensor loss = torch::nll_loss(torch::log_softmax(outputs, /*dim=*/1), batch_target);
-            torch::Tensor predictions = std::get<1>(torch::max(outputs, 1));
-            int corrects = torch::sum(predictions == batch_target).item<int>();
+            cudaEventRecord(start);
+            for (auto &batch : *test_dl_cifar10)
+            {
+                torch::Tensor batch_data = batch.data.to(device);
+                torch::Tensor batch_target = batch.target.to(device);
 
-            batch_index++;
-            corrects += torch::sum(predictions == batch_target).item<int>();
-            num_samples += batch.data.size(0);
-            running_loss += loss.item<double>();
+                torch::Tensor outputs = model_resnet50_native->forward(batch_data);
+                torch::Tensor loss = torch::nll_loss(torch::log_softmax(outputs, /*dim=*/1), batch_target);
+                torch::Tensor predictions = std::get<1>(torch::max(outputs, 1));
+                int corrects = torch::sum(predictions == batch_target).item<int>();
+
+                batch_index++;
+                corrects += torch::sum(predictions == batch_target).item<int>();
+                num_samples += batch.data.size(0);
+                running_loss += loss.item<double>();
+            }
+
+            cudaEventRecord(stop);
+            cudaEventSynchronize(stop);
+            cudaEventElapsedTime(&milliseconds, start, stop);
         }
 
-        cudaEventRecord(stop);
-        cudaEventSynchronize(stop);
-        cudaEventElapsedTime(&milliseconds, start, stop);
 
         std::cout << "Eval time: " << milliseconds << " ms" << std::endl;
         results_file << "NativeResNet-50,inference,"
                     << 1 << "," << running_loss / (double)batch_index << ","
                     << (float)corrects / (float)num_samples << ","
                     << milliseconds << std::endl;
+
+        {
+            torch::NoGradGuard no_grad;
+
+            for (auto &batch : *test_dl_cifar10)
+            {
+                torch::Tensor batch_data = batch.data.to(device);
+
+                for (int i = 1; i <= epochs; i++)
+                {
+                    torch::Tensor sample = batch_data[i];
+                    sample = sample.unsqueeze(0);
+
+                    cudaEventRecord(start);
+                    torch::Tensor outputs = model_resnet50_native->forward(batch_data);
+                    cudaEventRecord(stop);
+                    cudaEventSynchronize(stop);
+                    cudaEventElapsedTime(&milliseconds, start, stop);
+                    
+                    results_file << "NativeResNet-50,latency," << i << ",-1,-1," 
+                                 << milliseconds << std::endl;
+                }
+
+                break;
+            }
+        }
     }
 
     if (RUN_TORCHSCRIPT) //======================================serailized PyTorch models
@@ -495,34 +587,67 @@ int main()
             int corrects = 0;
             int num_samples = 0;
 
-            cudaEventRecord(start);
-            for (auto &batch : *test_dl_cifar10)
             {
-                torch::Tensor batch_data = batch.data.to(device);
-                torch::Tensor batch_target = batch.target.to(device);
+                torch::NoGradGuard no_grad;
 
-                std::vector<torch::jit::IValue> batch_data_ivalues;
-                batch_data_ivalues.push_back(batch_data);
-                torch::Tensor outputs = model->forward(batch_data_ivalues).toTensor();
-                torch::Tensor loss = torch::nll_loss(torch::log_softmax(outputs, /*dim=*/1), batch_target);
-                torch::Tensor predictions = std::get<1>(torch::max(outputs, 1));
-                int corrects = torch::sum(predictions == batch_target).item<int>();
+                cudaEventRecord(start);
+                for (auto &batch : *test_dl_cifar10)
+                {
+                    torch::Tensor batch_data = batch.data.to(device);
+                    torch::Tensor batch_target = batch.target.to(device);
 
-                batch_index++;
-                corrects += torch::sum(predictions == batch_target).item<int>();
-                num_samples += batch.data.size(0);
-                running_loss += loss.item<double>();
+                    std::vector<torch::jit::IValue> batch_data_ivalues;
+                    batch_data_ivalues.push_back(batch_data);
+                    torch::Tensor outputs = model->forward(batch_data_ivalues).toTensor();
+                    torch::Tensor loss = torch::nll_loss(torch::log_softmax(outputs, /*dim=*/1), batch_target);
+                    torch::Tensor predictions = std::get<1>(torch::max(outputs, 1));
+                    int corrects = torch::sum(predictions == batch_target).item<int>();
+
+                    batch_index++;
+                    corrects += torch::sum(predictions == batch_target).item<int>();
+                    num_samples += batch.data.size(0);
+                    running_loss += loss.item<double>();
+                }
+
+                cudaEventRecord(stop);
+                cudaEventSynchronize(stop);
+                cudaEventElapsedTime(&milliseconds, start, stop);
             }
-
-            cudaEventRecord(stop);
-            cudaEventSynchronize(stop);
-            cudaEventElapsedTime(&milliseconds, start, stop);
 
             std::cout << "Eval time: " << milliseconds << " ms" << std::endl;
             results_file << model_name << ",inference,"
                         << 1 << "," << running_loss / (double)batch_index << ","
                         << (float)corrects / (float)num_samples << ","
                         << milliseconds << std::endl;
+
+            {
+                torch::NoGradGuard no_grad;
+
+                for (auto &batch : *test_dl_cifar10)
+                {
+                    torch::Tensor batch_data = batch.data.to(device);
+
+                    for (int i = 1; i <= epochs; i++)
+                    {
+                        torch::Tensor sample = batch_data[i];
+                        sample = sample.unsqueeze(0);
+                        std::vector<torch::jit::IValue> sample_ivalue;
+                        sample_ivalue.push_back(sample);
+
+                        cudaEventRecord(start);
+                        torch::jit::IValue outputs = model->forward(sample_ivalue);
+                        cudaEventRecord(stop);
+                        cudaEventSynchronize(stop);
+                        cudaEventElapsedTime(&milliseconds, start, stop);
+                        
+                        std::cout << "latency: " << milliseconds << std::endl;
+                        results_file << model_name << ",latency," << i << ",-1,-1," 
+                                     << milliseconds << std::endl;
+                    }
+
+                    break;
+                }
+            }
         }
     }
 
@@ -636,14 +761,38 @@ int main()
 
         torch::Tensor latent_vecs_batch = torch::randn(
             {gen_batch_size, latent_vec_size, 1, 1}, torch::TensorOptions().device(device));
-        cudaEventRecord(start);
-        torch::Tensor res_images = generator->forward(latent_vecs_batch);
-        cudaEventRecord(stop);
-        cudaEventSynchronize(stop);
-        cudaEventElapsedTime(&milliseconds, start, stop);
+
+        {
+            torch::NoGradGuard no_grad;
+
+            cudaEventRecord(start);
+            torch::Tensor res_images = generator->forward(latent_vecs_batch);
+            cudaEventRecord(stop);
+            cudaEventSynchronize(stop);
+            cudaEventElapsedTime(&milliseconds, start, stop);
+        }
 
         std::cout << "Generation time: " << milliseconds << " ms" << std::endl;
         results_file << "DCGAN,generation,1,-1,-1," << milliseconds << std::endl;
+
+        {
+            torch::NoGradGuard no_grad;
+
+            for (int i = 1; i <= epochs; i++)
+            {
+                torch::Tensor sample = torch::randn(
+                    {1, latent_vec_size, 1, 1}, torch::TensorOptions().device(device));
+
+                cudaEventRecord(start);
+                torch::Tensor outputs = generator->forward(sample);
+                cudaEventRecord(stop);
+                cudaEventSynchronize(stop);
+                cudaEventElapsedTime(&milliseconds, start, stop);
+                
+                results_file << "DCGAN,latency," << i << ",-1,-1," 
+                             << milliseconds << std::endl;
+            }
+        }
     }
 
     if (RUN_SODNET) //==============================================================SODNet
@@ -697,28 +846,59 @@ int main()
         int batch_index = 0;
         double running_loss = 0.0;
 
-        cudaEventRecord(start);
-        for (auto &batch : *test_dl_adam)
         {
-            torch::Tensor batch_data = batch.data.to(device);
-            torch::Tensor batch_target = batch.target.to(device);
+            torch::NoGradGuard no_grad;
 
-            torch::Tensor outputs = model_sodnet->forward(batch_data);
-                torch::Tensor loss = torch::smooth_l1_loss(outputs, batch_target);
+            cudaEventRecord(start);
+            for (auto &batch : *test_dl_adam)
+            {
+                torch::Tensor batch_data = batch.data.to(device);
+                torch::Tensor batch_target = batch.target.to(device);
 
-            batch_index++;
-            running_loss += loss.item<double>();
+                torch::Tensor outputs = model_sodnet->forward(batch_data);
+                    torch::Tensor loss = torch::smooth_l1_loss(outputs, batch_target);
+
+                batch_index++;
+                running_loss += loss.item<double>();
+            }
+
+            cudaEventRecord(stop);
+            cudaEventSynchronize(stop);
+            cudaEventElapsedTime(&milliseconds, start, stop);
         }
 
-        cudaEventRecord(stop);
-        cudaEventSynchronize(stop);
-        cudaEventElapsedTime(&milliseconds, start, stop);
 
         std::cout << "Eval time: " << milliseconds << " ms" << std::endl;
         results_file << "SODNet,detection,"
                     << 1 << "," << running_loss / (double)batch_index << ","
                     << -1 /* idc abt IoU dude !!! */ << ","
                     << milliseconds << std::endl;
+
+        {
+            torch::NoGradGuard no_grad;
+
+            for (auto &batch : *test_dl_adam)
+            {
+                torch::Tensor batch_data = batch.data.to(device);
+
+                for (int i = 1; i <= epochs; i++)
+                {
+                    torch::Tensor sample = batch_data[i];
+                    sample = sample.unsqueeze(0);
+
+                    cudaEventRecord(start);
+                    torch::Tensor outputs = model_sodnet->forward(batch_data);
+                    cudaEventRecord(stop);
+                    cudaEventSynchronize(stop);
+                    cudaEventElapsedTime(&milliseconds, start, stop);
+                    
+                    results_file << "SODNet,latency," << i << ",-1,-1," 
+                                 << milliseconds << std::endl;
+                }
+
+                break;
+            }
+        }
     }
 
     results_file.close();
