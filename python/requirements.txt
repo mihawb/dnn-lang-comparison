@@ -6,4 +6,4 @@ numpy
 pandas
 matplotlib
 seaborn
-Pillow==10.0.1
+Pillow
