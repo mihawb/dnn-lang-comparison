@@ -40,10 +40,11 @@ int main(int argc, char* argv[])
 
     int batch_size_test = 128;
     int num_steps_test = 10000 / batch_size_test;
+    int num_steps_warmup = 1000;
 
     std::ofstream results_file;
     results_file.open("../results/cudnn_"+model_name+".csv", std::ios::out);
-    results_file << "model_name,type,epoch,loss,performance,elapsed_time" << std::endl;
+    results_file << "model_name,phase,epoch,loss,performance,elapsed_time" << std::endl;
 
     /* Welcome Message */
     std::cout << "== MNIST training with CUDNN ==" << std::endl;
@@ -187,6 +188,70 @@ int main(int argc, char* argv[])
 
     std::cout << "loss: " << std::setw(4) << loss << ", accuracy: " << accuracy << "%" << std::endl;
     results_file << model_name << ",inference,1," << loss << "," << accuracy << "," << milliseconds << std::endl;
+
+    // phase 3. latency
+    // step 1. load test set
+    std::cout << "[LATENCY]" << std::endl;
+    MNIST lat_data_loader = MNIST("../datasets/mnist-digits");
+    lat_data_loader.test(1);
+
+    // step 2. model initialization
+    model.test();
+
+    // step 3. dataset initialization
+    Blob<float> *lat_data = lat_data_loader.get_data();
+    Blob<float> *lat_target = lat_data_loader.get_target();
+    lat_data_loader.get_batch();
+    step = 0;
+
+    // 4. GPU warm-up
+    while (step < num_steps_warmup)
+    {
+        // nvtx profiling start
+        std::string nvtx_message = std::string("step" + std::to_string(step));
+        nvtxRangePushA(nvtx_message.c_str());
+
+        // update shared buffer contents
+		lat_data->to(cuda);
+		lat_target->to(cuda);
+
+        // forward
+        model.forward(lat_data);
+
+        // fetch next data
+        step = lat_data_loader.next();
+
+        // nvtx profiling stop
+        nvtxRangePop();
+    }
+
+    // 5. measure latency
+    while (step < num_steps_warmup + epochs)
+    {
+        // nvtx profiling start
+        std::string nvtx_message = std::string("step" + std::to_string(step));
+        nvtxRangePushA(nvtx_message.c_str());
+
+        // update shared buffer contents
+		lat_data->to(cuda);
+		lat_target->to(cuda);
+
+        // forward
+        cudaEventRecord(start);
+        model.forward(lat_data);
+        cudaEventRecord(stop);
+        cudaEventSynchronize(stop);
+        cudaEventElapsedTime(&milliseconds, start, stop);
+
+        std::cout << "latency: " << milliseconds << std::endl;
+        results_file << model_name << ",latency," << step - num_steps_warmup << ",-1,-1," << milliseconds << std::endl;
+
+        // fetch next data
+        step = lat_data_loader.next();
+
+        // nvtx profiling stop
+        nvtxRangePop();
+    }
 
     // Good bye
     std::cout << "Done." << std::endl;
