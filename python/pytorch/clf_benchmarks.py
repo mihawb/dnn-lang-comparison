@@ -56,7 +56,7 @@ def env_builder(name: str, num_classes: int, batch_size: int, test_batch_size: i
 if __name__ == '__main__':
 	telemetry = {
 		'model_name': [],
-		'type':[],
+		'phase':[],
 		'epoch': [],
 		'loss': [],
 		'performance': [],
@@ -98,7 +98,7 @@ if __name__ == '__main__':
 				train_history = np.mean(train_history)
 
 				telemetry['model_name'].append(model_name)
-				telemetry['type'].append('training')
+				telemetry['phase'].append('training')
 				telemetry['epoch'].append(epoch)
 				telemetry['loss'].append(train_history)
 				telemetry['performance'].append(accuracy)
@@ -111,7 +111,7 @@ if __name__ == '__main__':
 			torch.cuda.synchronize()
 
 			telemetry['model_name'].append(model_name)
-			telemetry['type'].append('inference')
+			telemetry['phase'].append('inference')
 			telemetry['epoch'].append(1)
 			telemetry['loss'].append(loss)
 			telemetry['performance'].append(accuracy)
@@ -130,7 +130,7 @@ if __name__ == '__main__':
 					torch.cuda.synchronize()
 
 					telemetry['model_name'].append(model_name)
-					telemetry['type'].append('latency')
+					telemetry['phase'].append('latency')
 					telemetry['epoch'].append(rep)
 					telemetry['loss'].append(-1)
 					telemetry['performance'].append(-1)
@@ -161,7 +161,7 @@ if __name__ == '__main__':
 		end_i = time.perf_counter_ns()
 
 		telemetry['model_name'].append('CELEBA')
-		telemetry['type'].append('read')
+		telemetry['phase'].append('read')
 		telemetry['epoch'].append(1)
 		telemetry['loss'].append(-1)
 		telemetry['performance'].append(-1)
@@ -182,7 +182,7 @@ if __name__ == '__main__':
 				gan_hist[stat] = np.mean(gan_hist[stat])		
 
 			telemetry['model_name'].append('DCGAN')
-			telemetry['type'].append('training')
+			telemetry['phase'].append('training')
 			telemetry['epoch'].append(epoch)
 			telemetry['loss'].append(f'{gan_hist["loss_G"]}|{gan_hist["loss_D"]}')
 			telemetry['performance'].append(f'{gan_hist["D_x"]}|{gan_hist["D_G_z1"]}|{gan_hist["D_G_z2"]}')
@@ -196,7 +196,7 @@ if __name__ == '__main__':
 		torch.cuda.synchronize()
 
 		telemetry['model_name'].append('DCGAN')
-		telemetry['type'].append('generation')
+		telemetry['phase'].append('generation')
 		telemetry['epoch'].append(1)
 		telemetry['loss'].append(-1)
 		telemetry['performance'].append(-1)
@@ -215,7 +215,7 @@ if __name__ == '__main__':
 				torch.cuda.synchronize()
 
 				telemetry['model_name'].append('DCGAN')
-				telemetry['type'].append('latency')
+				telemetry['phase'].append('latency')
 				telemetry['epoch'].append(rep)
 				telemetry['loss'].append(-1)
 				telemetry['performance'].append(-1)
@@ -241,7 +241,7 @@ if __name__ == '__main__':
 			torch.cuda.synchronize()
 
 			telemetry['model_name'].append('SODNet')
-			telemetry['type'].append('training')
+			telemetry['phase'].append('training')
 			telemetry['epoch'].append(epoch)
 			telemetry['loss'].append(train_loss)
 			telemetry['performance'].append(-1)
@@ -257,7 +257,7 @@ if __name__ == '__main__':
 		torch.cuda.synchronize()
 
 		telemetry['model_name'].append('SODNet')
-		telemetry['type'].append('detection')
+		telemetry['phase'].append('detection')
 		telemetry['epoch'].append(1)
 		telemetry['loss'].append(eval_loss)
 		telemetry['performance'].append(-1)
@@ -278,7 +278,7 @@ if __name__ == '__main__':
 				torch.cuda.synchronize()
 
 				telemetry['model_name'].append('SODNet')
-				telemetry['type'].append('latency')
+				telemetry['phase'].append('latency')
 				telemetry['epoch'].append(rep)
 				telemetry['loss'].append(-1)
 				telemetry['performance'].append(-1)
