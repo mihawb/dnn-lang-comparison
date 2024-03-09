@@ -1,4 +1,4 @@
-function [celeba_array] = loadCELEBA(root,img_size,limit)
+function [celeba_ds] = loadCELEBA(root,batch_size,img_size,limit) % why []?
 
 celeba_files = dir(root);
 celeba_files = string({celeba_files(3:end).name});
@@ -14,7 +14,7 @@ for img_name = celeba_files
     index = index + 1;
 
     if (mod(index, 1000) == 0)
-        fprintf("%d/%d (%f%%)\n", index, limit, index/limit);
+        fprintf("%d/%d (%f%%)\n", index, limit, index/limit * 100);
     end
 
     % hopefully only for debug
@@ -22,6 +22,8 @@ for img_name = celeba_files
         break
     end
 end
+
+celeba_ds = arrayDatastore(celeba_array,IterationDimension=4, ReadSize=batch_size);
 
 end
 

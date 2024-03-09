@@ -40,17 +40,18 @@ end
 
 %% CELEB-A
 celeba_location = "../datasets/celeba_tiny/img_align_celeba/";
-celeba_imgs = loadCELEBA(celeba_location, 64, 16);
+celeba_imgs = loadCELEBA(celeba_location, 1, 64, 16);
 figure(4);
 
 for i = 1:16
     subplot(4,4,i);
-    imshow(celeba_imgs(:,:,:,i))
+    img = cell2mat(read(celeba_imgs));
+    imshow(img);
 end
 
 %% CELEBA-A Tiny loading benchmark
-N = 30000;
+N = 3000; % can load 30k on its own but not alongside other datasets
 t_begin = tic;
-loadCELEBA(celeba_location, 64, N);
-t_end = toc;
-fprintf("Loading %d CELEB-A images took %d seconds.\n", N, t_end - t_begin);
+celeba_ds = loadCELEBA(celeba_location, 96, 64, N);
+t_elapsed = toc(t_begin);
+fprintf("Loading %d CELEB-A images took %f seconds.\n", N, t_elapsed);
