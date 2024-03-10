@@ -144,7 +144,7 @@ def train_single_model(model_name, config, telemetry, child_conn):
 
 def get_cifar10_data(preprocess=None):
 	(x_train, y_train), (x_test, y_test) = tf.keras.datasets.cifar10.load_data()
-	x_train, x_test = x_train.asphase('float32'), x_test.asphase('float32')
+	x_train, x_test = x_train.astype('float32'), x_test.astype('float32')
 
 	if preprocess is not None:
 		x_train, x_test = preprocess(x_train), preprocess(x_test)
