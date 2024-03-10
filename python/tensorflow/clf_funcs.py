@@ -119,7 +119,7 @@ def train_single_model(model_name, config, telemetry, child_conn):
 			telemetry['phase'].append('latency')
 			telemetry['loss'].append(-1)
 			telemetry['performance'].append(-1)
-			telemetry['epoch'].append(rep)
+			telemetry['epoch'].append(rep + 1)
 			telemetry['elapsed_time'].append(end - start)
 	else:
 		batch = next(iter(test_ds))[0]
@@ -133,7 +133,7 @@ def train_single_model(model_name, config, telemetry, child_conn):
 			telemetry['phase'].append('latency')
 			telemetry['loss'].append(-1)
 			telemetry['performance'].append(-1)
-			telemetry['epoch'].append(rep)
+			telemetry['epoch'].append(rep + 1)
 			telemetry['elapsed_time'].append(end - start)
 
 	child_conn.send(telemetry)

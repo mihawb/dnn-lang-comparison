@@ -244,7 +244,8 @@ int main(int argc, char* argv[])
         cudaEventElapsedTime(&milliseconds, start, stop);
 
         std::cout << "latency: " << milliseconds << std::endl;
-        results_file << model_name << ",latency," << step - num_steps_warmup << ",-1,-1," << milliseconds << std::endl;
+        results_file << model_name << ",latency," << step - num_steps_warmup + 1 
+                     << ",-1,-1," << milliseconds << std::endl;
 
         // fetch next data
         step = lat_data_loader.next();

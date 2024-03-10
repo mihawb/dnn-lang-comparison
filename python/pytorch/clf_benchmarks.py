@@ -14,10 +14,9 @@ from torchvision.models import resnet50, densenet121, mobilenet_v2, convnext_tin
 
 
 RUN_CLFS = True
-# clfs = ['FullyConnectedNet', 'SimpleConvNet', 'ResNet-50', 'DenseNet-121', 'MobileNet-v2', 'ConvNeXt-Tiny']
-clfs = ['FullyConnectedNet']
-RUN_DCGAN = False
-RUN_SODNET = False
+clfs = ['FullyConnectedNet', 'SimpleConvNet', 'ResNet-50', 'DenseNet-121', 'MobileNet-v2', 'ConvNeXt-Tiny']
+RUN_DCGAN = True
+RUN_SODNET = True
 
 
 def env_builder(name: str, num_classes: int, batch_size: int, test_batch_size: int): 
@@ -131,7 +130,7 @@ if __name__ == '__main__':
 
 					telemetry['model_name'].append(model_name)
 					telemetry['phase'].append('latency')
-					telemetry['epoch'].append(rep)
+					telemetry['epoch'].append(rep + 1)
 					telemetry['loss'].append(-1)
 					telemetry['performance'].append(-1)
 					telemetry['elapsed_time'].append(start.elapsed_time(end) * 1e6)
@@ -216,7 +215,7 @@ if __name__ == '__main__':
 
 				telemetry['model_name'].append('DCGAN')
 				telemetry['phase'].append('latency')
-				telemetry['epoch'].append(rep)
+				telemetry['epoch'].append(rep + 1)
 				telemetry['loss'].append(-1)
 				telemetry['performance'].append(-1)
 				telemetry['elapsed_time'].append(start.elapsed_time(end) * 1e6)
@@ -279,7 +278,7 @@ if __name__ == '__main__':
 
 				telemetry['model_name'].append('SODNet')
 				telemetry['phase'].append('latency')
-				telemetry['epoch'].append(rep)
+				telemetry['epoch'].append(rep + 1)
 				telemetry['loss'].append(-1)
 				telemetry['performance'].append(-1)
 				telemetry['elapsed_time'].append(start.elapsed_time(end) * 1e6)
