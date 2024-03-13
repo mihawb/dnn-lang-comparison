@@ -24,7 +24,7 @@ run_tests() {
 	matlab -nodisplay -nosplash -nodesktop -r "run('$(pwd)/matlab/DCGAN_test.m'); exit;"
 }
 
-for i in {17..17}
+for i in {22..22}
 do
 	echo "Running iteration ${i} of benchmarks"
 	mkdir results

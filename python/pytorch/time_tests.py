@@ -178,7 +178,7 @@ if __name__ == '__main__':
 	start_real = time.time_ns()
 	start_perf = time.perf_counter_ns()
 	start_cuda.record()
-	_ = generate(netG, device, 1, test_batch_size=gen_batch_size, save=False)
+	_ = generate(netG, device, gen_batch_size, save=False)
 	end_real = time.time_ns()
 	end_perf = time.perf_counter_ns()
 	end_cuda.record()
