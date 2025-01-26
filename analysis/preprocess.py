@@ -113,7 +113,7 @@ def get_results(results_root: str, save: bool=False, full: bool=True, **framewor
 		evaluation_to_concat.append(cudnn)
 
 	if frameworks.get('matlab', False) or full:
-		matlab = pd.concat([fcnet, scvnet, mnet, rnet, matlab])
+		matlab = pd.concat([fcnet, scvnet, mnet, rnet, dcgan])
 		matlab = matlab[(matlab.phase != 'training') & (matlab.phase != 'latency')]
 		matlab.insert(0, 'framework', 'Matlab')
 		matlab.elapsed_time *= 1e3
@@ -131,36 +131,36 @@ def get_results(results_root: str, save: bool=False, full: bool=True, **framewor
 		pytorch = pytorch[pytorch.phase == 'latency']
 		pytorch.insert(0, 'framework', 'PyTorch')
 		pytorch.elapsed_time /= 1e6
-		evaluation_to_concat.append(pytorch)
+		latency_to_concat.append(pytorch)
 
 	if frameworks.get('libtorch', False) or full:
 		libtorch = pd.read_csv(f'{results_root}/libtorch.csv')
 		libtorch = libtorch[libtorch.phase == 'latency']
 		libtorch.insert(0, 'framework', 'LibTorch')
-		evaluation_to_concat.append(libtorch)
+		latency_to_concat.append(libtorch)
 
 	if frameworks.get('tensorflow', False) or full:
 		tensorflow = pd.read_csv(f'{results_root}/tensorflow.csv')
 		tensorflow = tensorflow[tensorflow.phase == 'latency']
 		tensorflow.insert(0, 'framework', 'TensorFlow')
 		tensorflow.elapsed_time /= 1e6
-		evaluation_to_concat.append(tensorflow)
+		latency_to_concat.append(tensorflow)
 
 	if frameworks.get('cudnn', False) or full:
 		cudnn = preprocess_cudnn(results_root)
 		cudnn = cudnn[cudnn.phase == 'latency']
 		cudnn.insert(0, 'framework', 'cuDNN')
-		evaluation_to_concat.append(cudnn)
+		latency_to_concat.append(cudnn)
 
 	if frameworks.get('matlab', False) or full:
-		matlab = pd.concat([fcnet, scvnet, mnet, rnet, matlab])
+		matlab = pd.concat([fcnet, scvnet, mnet, rnet, dcgan])
 		matlab = matlab[matlab.phase == 'latency']
 		matlab.insert(0, 'framework', 'Matlab')
 		matlab.elapsed_time *= 1e3
 		latency_to_concat.append(matlab)
 
 	latency = pd.concat(latency_to_concat)
-	latency.drop(columns=['phase', 'loss', 'performance', 'epoch'], inplace=True)
+	latency.drop(columns=['phase', 'loss', 'performance'], inplace=True)
 	latency.reset_index(drop=True, inplace=True)
 
 	if save:
