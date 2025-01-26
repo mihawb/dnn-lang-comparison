@@ -5,7 +5,8 @@ close all;
 %% config
 momentum = 0.9;
 lr = 0.01;
-epochs = 8;
+epochs = 12;
+latency_warmup_steps = 1000;
 batch_size = 96;
 
 %% loading data
@@ -76,16 +77,18 @@ outputs = classify(net, x_test, MiniBatchSize=batch_size*2);
 test_acc = mean(outputs == y_test);
 
 fhand = fopen("../results/matlab_ResNet-50.csv", "a+");
-fprintf(fhand, "1,1,%f,,,,,,%f,,inference", inference_time,test_acc);
+fprintf(fhand, "1,1,%f,,,,,,%f,,inference\n", inference_time,test_acc);
 
 %% latency
 
-for i=1:epochs
+for i=1:epochs+latency_warmup_steps
     img = x_test(:,:,:,i);
     t_latency_begin = tic;
     cls = predict(net,img);
     t_latency_elapsed = toc(t_latency_begin);
-    fprintf(fhand, "%d,1,%f,,,,,,,,latency\n", i, t_latency_elapsed);
+    if i > latency_warmup_steps
+        fprintf(fhand, "%d,1,%f,,,,,,-1,,latency\n", i, t_latency_elapsed);
+    end
 end
 
 fclose(fhand);

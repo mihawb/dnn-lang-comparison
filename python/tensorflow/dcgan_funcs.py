@@ -1,7 +1,7 @@
 import sys
 sys.path.append('..')
 from load_datasets import load_celeba_images
-from clf_funcs import setup
+from clf_funcs import setup, PerfCounterCallback
 
 import time
 import pathlib
@@ -242,18 +242,17 @@ def train_dcgan(config, telemetry, child_conn=None):
 	telemetry['elapsed_time'].append(end - start)
 
 	# latency
-	for rep in range(config['epochs']):
+	perfcounter = PerfCounterCallback(telemetry_ref=telemetry, latency_ref=[])
+	for rep in range(config['epochs'] + config['latency_warmup_steps']):
 		sample = tf.random.normal([1, config['latent_vec_size']])
-		start = time.perf_counter_ns()
-		_ = modelG(sample, training=False)
-		end = time.perf_counter_ns()
+		_ = modelG.predict(sample, callbacks=[perfcounter])
 
-		telemetry['model_name'].append('DCGAN')
-		telemetry['phase'].append('latency')
-		telemetry['epoch'].append(rep + 1)
-		telemetry['loss'].append(-1)
-		telemetry['performance'].append(-1)
-		telemetry['elapsed_time'].append(end - start)
+	telemetry['model_name'].extend(['DCGAN'] * config['epochs'])
+	telemetry['phase'].extend(['latency'] * config['epochs'])
+	telemetry['epoch'].extend([i+1 for i in range(config['epochs'])])
+	telemetry['loss'].extend([-1] * config['epochs'])
+	telemetry['performance'].extend([-1] * config['epochs'])
+	telemetry['elapsed_time'].extend(perfcounter.latency_ref[config['latency_warmup_steps']:])
 
 	pd.DataFrame(telemetry).to_csv(config['results_filename'], index=False)
 	if child_conn is not None: child_conn.send(telemetry)

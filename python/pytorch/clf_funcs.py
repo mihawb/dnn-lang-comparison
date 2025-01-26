@@ -9,6 +9,42 @@ import torchvision
 import torch.nn as nn
 import torch.nn.functional as F
 from torch.utils.data import TensorDataset, DataLoader
+from torchvision.models import resnet50, densenet121, mobilenet_v2, convnext_tiny
+
+
+def env_builder(name: str, num_classes: int, batch_size: int, test_batch_size: int): 
+	if name == 'FullyConnectedNet':
+		model = FullyConnectedNet()
+	elif name == 'SimpleConvNet':
+		model = SimpleConvNet()
+	elif name == 'ExtendedConvNet':
+		model = SimpleConvNet(inner_expand=5)
+	elif name == 'ResNet-50':
+		model = resnet50()
+		model.fc = nn.Linear(in_features=2048, out_features=num_classes, bias=True)
+	elif name == 'DenseNet-121':
+		model = densenet121()
+		model.classifier = nn.Linear(in_features=1024, out_features=num_classes, bias=True)
+	elif name == 'MobileNet-v2':
+		model = mobilenet_v2()
+		model.classifier[1] = nn.Linear(in_features=1280, out_features=num_classes, bias=True)
+	elif name == 'ConvNeXt-Tiny':
+		model = convnext_tiny()
+		model.classifier[2] = nn.Linear(in_features=768, out_features=num_classes, bias=True)
+	else:
+		raise ValueError('Invalid model name')
+
+	if name == 'FullyConnectedNet':
+		train_dl, _, test_dl = get_mnist_loaders(batch_size, test_batch_size)
+		loss_func = F.nll_loss
+	elif name in ['SimpleConvNet', 'ExtendedConvNet']:
+		train_dl, _, test_dl = get_mnist_loaders(batch_size, test_batch_size, flatten=False)
+		loss_func = F.nll_loss
+	else:
+		train_dl, test_dl = get_cifar10_loaders(batch_size, test_batch_size)
+		loss_func = F.cross_entropy
+
+	return model, train_dl, test_dl, loss_func
 
 
 def fit(model, device, loader, loss_func, epoch, optimizer, log_interval=100, silent=False):
@@ -155,8 +191,7 @@ class FullyConnectedNet(nn.Module):
 
 
 class SimpleConvNet(nn.Module):
-
-	def __init__(self, num_classes=10):
+	def __init__(self, num_classes=10, inner_expand=0):
 		super().__init__()
 		self.conv1 = nn.Sequential(         
 			nn.Conv2d(1, 16, 5, 1, 2),
@@ -166,14 +201,32 @@ class SimpleConvNet(nn.Module):
 		self.conv2 = nn.Sequential(         
 			nn.Conv2d(16, 32, 5, 1, 2),
 			nn.ReLU(),
-			nn.MaxPool2d(2),  
+			nn.MaxPool2d(2),
+			# ECVNet expand
+			*[nn.Sequential(         
+				nn.Conv2d(32, 32, 3, 1, 5),
+				nn.ReLU(),
+				nn.MaxPool2d(2),  
+			) for _ in range(inner_expand)]
 		)
-		self.dense = nn.Linear(32 * 7 * 7, 500)
-		self.classifier = nn.Linear(500, num_classes)
+
+		self.dense = nn.Sequential(
+			nn.Linear(32 * 7 * 7, 512),
+			nn.ReLU(),
+			# ECVNet expand
+			*[nn.Sequential(
+				nn.Linear(int(512 / 2 ** (i - 1)), int(512 / 2 ** i)), 
+				nn.ReLU()
+			) for i in range(1, inner_expand + 1)]
+		)
+
+		self.classifier = nn.Linear(int(512 / 2 ** inner_expand), num_classes)
 
 	def forward(self, x):
 		x = self.conv1(x)
 		x = self.conv2(x)
+
 		x = torch.flatten(x, 1)
-		x = F.relu(self.dense(x))
+		x = self.dense(x)
+
 		return F.log_softmax(self.classifier(x), dim=1)
