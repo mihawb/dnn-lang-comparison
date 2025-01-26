@@ -19,8 +19,10 @@ int main(int argc, char* argv[])
         which_model = 0;
     else if (model_name.compare("scvnet") == 0)
         which_model = 1;
+    else if (model_name.compare("ecvnet") == 0)
+        which_model = 2;
     else {
-        std::cout << "Invalid model name.\nChoose one of the following:\nfcnet, scvnet" << std::endl;
+        std::cout << "Invalid model name.\nChoose one of the following:\nfcnet, scvnet, ecvnet" << std::endl;
         return 1; 
     }
 
@@ -30,7 +32,7 @@ int main(int argc, char* argv[])
     int batch_size_train = 96;
     int num_steps_in_ep_train = 60000 / batch_size_train;
     int monitoring_step = 200;
-    int epochs = 8;
+    int epochs = 12;
 
     double learning_rate = 0.02f;
     double lr_decay = 0.00005f;

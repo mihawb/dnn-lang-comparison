@@ -33,8 +33,8 @@ SimpleConvNet::SimpleConvNet(int num_classes)
 		torch::nn::ReLU(),
 		torch::nn::MaxPool2d(torch::nn::MaxPool2dOptions(2).stride(2))};
 
-	torch::nn::Linear dense_unregistered = torch::nn::Linear(32 * 7 * 7, 500);
-	torch::nn::Linear classifier_unregistered = torch::nn::Linear(500, num_classes);
+	torch::nn::Linear dense_unregistered = torch::nn::Linear(32 * 7 * 7, 512);
+	torch::nn::Linear classifier_unregistered = torch::nn::Linear(512, num_classes);
 
 	conv1 = register_module("conv1", conv1_unregistered);
 	conv2 = register_module("conv2", conv2_unregistered);
@@ -47,7 +47,82 @@ torch::Tensor SimpleConvNet::forward(torch::Tensor x)
 	x = conv1->forward(x);
 	x = conv2->forward(x);
 	x = x.view({-1, 32 * 7 * 7});
+	// x = x.flatten(1);
 	x = torch::relu(dense->forward(x));
+	return torch::log_softmax(classifier->forward(x), /*dim=*/1);
+}
+
+ExtendedConvNet::ExtendedConvNet(int num_classes)
+{
+	torch::nn::Sequential conv1_unregistered{
+		torch::nn::Conv2d(torch::nn::Conv2dOptions(1, 16, 5).stride(1).padding(2)),
+		torch::nn::ReLU(),
+		torch::nn::MaxPool2d(torch::nn::MaxPool2dOptions(2).stride(2))};
+
+	torch::nn::Sequential conv2_unregistered{
+		torch::nn::Conv2d(torch::nn::Conv2dOptions(16, 32, 5).stride(1).padding(2)),
+		torch::nn::ReLU(),
+		torch::nn::MaxPool2d(torch::nn::MaxPool2dOptions(2).stride(2))};
+
+	torch::nn::Sequential extended_convs_unregistered{
+		// ec1
+		torch::nn::Conv2d(torch::nn::Conv2dOptions(32, 32, 3).stride(1).padding(5)),
+		torch::nn::ReLU(),
+		torch::nn::MaxPool2d(torch::nn::MaxPool2dOptions(2).stride(2)),
+		// ec2
+		torch::nn::Conv2d(torch::nn::Conv2dOptions(32, 32, 3).stride(1).padding(5)),
+		torch::nn::ReLU(),
+		torch::nn::MaxPool2d(torch::nn::MaxPool2dOptions(2).stride(2)),
+		// ec3
+		torch::nn::Conv2d(torch::nn::Conv2dOptions(32, 32, 3).stride(1).padding(5)),
+		torch::nn::ReLU(),
+		torch::nn::MaxPool2d(torch::nn::MaxPool2dOptions(2).stride(2)),
+		// ec4
+		torch::nn::Conv2d(torch::nn::Conv2dOptions(32, 32, 3).stride(1).padding(5)),
+		torch::nn::ReLU(),
+		torch::nn::MaxPool2d(torch::nn::MaxPool2dOptions(2).stride(2)),
+		// ec5
+		torch::nn::Conv2d(torch::nn::Conv2dOptions(32, 32, 3).stride(1).padding(5)),
+		torch::nn::ReLU(),
+		torch::nn::MaxPool2d(torch::nn::MaxPool2dOptions(2).stride(2))
+	};
+
+	torch::nn::Linear dense_unregistered = torch::nn::Linear(32 * 7 * 7, 512);
+	torch::nn::Sequential extended_dense_unregistered{
+		// ed1
+		torch::nn::Linear(512, 256),
+		torch::nn::ReLU(),
+		// ed2
+		torch::nn::Linear(256, 128),
+		torch::nn::ReLU(),
+		// ed3
+		torch::nn::Linear(128, 64),
+		torch::nn::ReLU(),
+		// ed4
+		torch::nn::Linear(64, 32),
+		torch::nn::ReLU(),
+		// ed5
+		torch::nn::Linear(32, 16),
+		torch::nn::ReLU()
+	};
+	torch::nn::Linear classifier_unregistered = torch::nn::Linear(16, num_classes);
+
+	conv1 = register_module("conv1", conv1_unregistered);
+	conv2 = register_module("conv2", conv2_unregistered);
+	extended_convs = register_module("extended_convs", extended_convs_unregistered);
+	dense = register_module("dense", dense_unregistered);
+	extended_dense = register_module("extended_dense", extended_dense_unregistered);
+	classifier = register_module("classifier", classifier_unregistered);
+}
+
+torch::Tensor ExtendedConvNet::forward(torch::Tensor x)
+{
+	x = conv1->forward(x);
+	x = conv2->forward(x);
+	x = extended_convs->forward(x);
+	x = x.flatten(1);
+	x = torch::relu(dense->forward(x));
+	x = extended_dense->forward(x);
 	return torch::log_softmax(classifier->forward(x), /*dim=*/1);
 }
 

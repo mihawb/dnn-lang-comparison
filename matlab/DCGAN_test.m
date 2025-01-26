@@ -68,7 +68,8 @@ layersDiscriminator = [
 netG = dlnetwork(layersGenerator);
 netD = dlnetwork(layersDiscriminator);
 
-numEpochs = 8;
+numEpochs = 12;
+latency_warmup_steps = 1000;
 miniBatchSize = 96;
 learnRate = 0.0002;
 gradientDecayFactor = 0.5;
@@ -155,14 +156,16 @@ fprintf(fhand, "DCGAN,evaluation,1,-1,-1,%f\n", t_eval_elapsed);
 
 %% latency
 
-for i=1:numEpochs
+for i=1:numEpochs+latency_warmup_steps
     ZNew = randn(numLatentInputs,1,"single");
     ZNew = dlarray(ZNew,"CB");
     ZNew = gpuArray(ZNew);
     t_latency_begin = tic;
     XGeneratedNew = predict(netG,ZNew);
     t_latency_elapsed = toc(t_latency_begin);
-    fprintf(fhand, "DCGAN,latency,%d,-1,-1,%f\n", i, t_latency_elapsed);
+    if i > latency_warmup_steps
+        fprintf(fhand, "DCGAN,latency,%d,-1,-1,%f\n", i, t_latency_elapsed);
+    end
 end
 
 fclose(fhand);

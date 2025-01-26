@@ -80,7 +80,7 @@ for i=1:epochs
     t_latency_begin = tic;
     cls = predict(net,img);
     t_latency_elapsed = toc(t_latency_begin);
-    fprintf(fhand, "%d,1,%f,,,,,,,,latency\n", i, t_latency_elapsed);
+    fprintf(fhand, "%d,1,%f,,,,,,-1,,latency\n", i, t_latency_elapsed);
 end
 
 fclose(fhand);

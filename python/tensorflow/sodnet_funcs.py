@@ -117,18 +117,19 @@ def train_sodnet(config, telemetry, child_conn):
 
 	# latency
 	batch = next(iter(test_ds))
-	for rep in range(config['epochs']):
-		sample = np.expand_dims(batch[0][rep], axis=0)
+	for rep in range(config['epochs'] + config['latency_warmup_steps']):
+		sample = np.expand_dims(batch[0][rep % config['batch_size_SOD']], axis=0)
 		start = time.perf_counter_ns()
 		_ = model(sample, training=False)
 		end = time.perf_counter_ns()
 
-		telemetry['model_name'].append('SODNet')
-		telemetry['phase'].append('latency')
-		telemetry['epoch'].append(rep + 1)
-		telemetry['loss'].append(-1)
-		telemetry['performance'].append(-1)
-		telemetry['elapsed_time'].append(end - start)
+		if rep >= config['latency_warmup_steps']:
+			telemetry['model_name'].append('SODNet')
+			telemetry['phase'].append('latency')
+			telemetry['epoch'].append(rep + 1 - config['latency_warmup_steps'])
+			telemetry['loss'].append(-1)
+			telemetry['performance'].append(-1)
+			telemetry['elapsed_time'].append(end - start)
 
 	child_conn.send(telemetry)
 	pd.DataFrame(telemetry).to_csv(config['results_filename'], index=False)

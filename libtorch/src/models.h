@@ -22,6 +22,17 @@ struct SimpleConvNet : torch::nn::Module
     torch::nn::Linear dense{nullptr}, classifier{nullptr};
 };
 
+struct ExtendedConvNet : torch::nn::Module
+{
+    ExtendedConvNet(int num_classes = 10);
+
+    torch::Tensor forward(torch::Tensor x);
+
+    torch::nn::Sequential conv1{nullptr}, conv2{nullptr}, 
+    extended_convs{nullptr}, extended_dense{nullptr};
+    torch::nn::Linear dense{nullptr}, classifier{nullptr};
+};
+
 struct Bottleneck : torch::nn::Module
 {
     Bottleneck(

@@ -1,6 +1,6 @@
 from sodnet_funcs import fit_sodnet, test_sodnet, get_adam_loaders_from_memory, SODNet
 from dcgan_funcs import fit_dcgan, generate, get_celeba_loader_from_memory, Generator, Discriminator, dcgan_weights_init 
-from clf_funcs import fit, test, get_cifar10_loaders, get_mnist_loaders, FullyConnectedNet, SimpleConvNet
+from clf_funcs import fit, test, env_builder
 
 import time
 import numpy as np
@@ -10,46 +10,13 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 import torch.nn.functional as F
-from torchvision.models import resnet50, densenet121, mobilenet_v2, convnext_tiny
 
 
 RUN_CLFS = True
-clfs = ['FullyConnectedNet', 'SimpleConvNet', 'ResNet-50', 'DenseNet-121', 'MobileNet-v2', 'ConvNeXt-Tiny']
-RUN_DCGAN = True
-RUN_SODNET = True
-
-
-def env_builder(name: str, num_classes: int, batch_size: int, test_batch_size: int): 
-	if name == 'FullyConnectedNet':
-		model = FullyConnectedNet()
-	elif name == 'SimpleConvNet':
-		model = SimpleConvNet()
-	elif name == 'ResNet-50':
-		model = resnet50()
-		model.fc = nn.Linear(in_features=2048, out_features=num_classes, bias=True)
-	elif name == 'DenseNet-121':
-		model = densenet121()
-		model.classifier = nn.Linear(in_features=1024, out_features=num_classes, bias=True)
-	elif name == 'MobileNet-v2':
-		model = mobilenet_v2()
-		model.classifier[1] = nn.Linear(in_features=1280, out_features=num_classes, bias=True)
-	elif name == 'ConvNeXt-Tiny':
-		model = convnext_tiny()
-		model.classifier[2] = nn.Linear(in_features=768, out_features=num_classes, bias=True)
-	else:
-		raise ValueError('Invalid model name')
-
-	if name == 'FullyConnectedNet':
-		train_dl, _, test_dl = get_mnist_loaders(batch_size, test_batch_size)
-		loss_func = F.nll_loss
-	elif name == 'SimpleConvNet':
-		train_dl, _, test_dl = get_mnist_loaders(batch_size, test_batch_size, flatten=False)
-		loss_func = F.nll_loss
-	else:
-		train_dl, test_dl = get_cifar10_loaders(batch_size, test_batch_size)
-		loss_func = F.cross_entropy
-
-	return model, train_dl, test_dl, loss_func
+clfs = ['FullyConnectedNet', 'ExtendedConvNet', 'SimpleConvNet', 'ResNet-50', 'DenseNet-121', 'MobileNet-v2', 'ConvNeXt-Tiny']
+clfs = ['ExtendedConvNet']
+RUN_DCGAN = False
+RUN_SODNET = False
 
 
 if __name__ == '__main__':
@@ -64,7 +31,8 @@ if __name__ == '__main__':
 
 	batch_size = 96
 	test_batch_size = 128
-	epochs = 8
+	epochs = 12
+	latency_warmup_steps = 1000
 	lr = 1e-2
 	momentum = 0.9
 	num_classes = 10
@@ -119,21 +87,30 @@ if __name__ == '__main__':
 
 			# single sample latency
 			with torch.no_grad():
-				batch = next(iter(test_dl))
-				batch = batch[0].to(device)
-				for rep in range(epochs):
-					sample = batch[rep].unsqueeze(dim=0)
-					start.record()
-					_ = model(sample)
-					end.record()
-					torch.cuda.synchronize()
+				# batch = next(iter(test_dl))
+				warmup = 0
+				for batch in test_dl:
+					batch = batch[0].to(device)
+					warmup += len(batch)
+					warmup_finished = warmup > latency_warmup_steps
+					
+					for rep in range(epochs if warmup_finished else len(batch)):
+						sample = batch[rep].unsqueeze(dim=0)
+						start.record()
+						_ = model(sample)
+						end.record()
+						torch.cuda.synchronize()
 
-					telemetry['model_name'].append(model_name)
-					telemetry['phase'].append('latency')
-					telemetry['epoch'].append(rep + 1)
-					telemetry['loss'].append(-1)
-					telemetry['performance'].append(-1)
-					telemetry['elapsed_time'].append(start.elapsed_time(end) * 1e6)
+						if warmup_finished:
+							telemetry['model_name'].append(model_name)
+							telemetry['phase'].append('latency')
+							telemetry['epoch'].append(rep + 1)
+							telemetry['loss'].append(-1)
+							telemetry['performance'].append(-1)
+							telemetry['elapsed_time'].append(start.elapsed_time(end) * 1e6)
+					
+					if warmup_finished:
+						break
 
 			pd.DataFrame(telemetry).to_csv(results_filepath, index=False)
 
@@ -204,21 +181,22 @@ if __name__ == '__main__':
 
 		# single sample latency
 		with torch.no_grad():
-			batch = next(iter(celeba_dl))
-			batch = batch[0].to(device)
-			for rep in range(epochs):
-				sample = batch[rep].unsqueeze(dim=0)
+			latent_vecs = torch.randn(latency_warmup_steps + epochs, nz, 1, 1, device=device)
+			for i, sample in enumerate(latent_vecs):
+				sample = sample.unsqueeze(dim=0)
 				start.record()
 				_ = netG(sample)
 				end.record()
 				torch.cuda.synchronize()
 
-				telemetry['model_name'].append('DCGAN')
-				telemetry['phase'].append('latency')
-				telemetry['epoch'].append(rep + 1)
-				telemetry['loss'].append(-1)
-				telemetry['performance'].append(-1)
-				telemetry['elapsed_time'].append(start.elapsed_time(end) * 1e6)
+				if i >= latency_warmup_steps:
+					telemetry['model_name'].append('DCGAN')
+					telemetry['phase'].append('latency')
+					telemetry['epoch'].append(i - latency_warmup_steps + 1)
+					telemetry['loss'].append(-1)
+					telemetry['performance'].append(-1)
+					telemetry['elapsed_time'].append(start.elapsed_time(end) * 1e6)
+
 
 		pd.DataFrame(telemetry).to_csv(results_filepath, index=False)
 
@@ -267,20 +245,29 @@ if __name__ == '__main__':
 
 		# single sample latency
 		with torch.no_grad():
-			batch = next(iter(test_dl))
-			batch = batch[0].to(device)
-			for rep in range(epochs):
-				sample = batch[rep].unsqueeze(dim=0)
-				start.record()
-				_ = model(sample)
-				end.record()
-				torch.cuda.synchronize()
+			# batch = next(iter(test_dl))
+			warmup = 0
+			for batch in test_dl:
+				batch = batch[0].to(device)
+				warmup += len(batch)
+				warmup_finished = warmup > latency_warmup_steps
 
-				telemetry['model_name'].append('SODNet')
-				telemetry['phase'].append('latency')
-				telemetry['epoch'].append(rep + 1)
-				telemetry['loss'].append(-1)
-				telemetry['performance'].append(-1)
-				telemetry['elapsed_time'].append(start.elapsed_time(end) * 1e6)
+				for rep in range(epochs if warmup_finished else len(batch)):
+					sample = batch[rep].unsqueeze(dim=0)
+					start.record()
+					_ = model(sample)
+					end.record()
+					torch.cuda.synchronize()
+
+					if warmup_finished:
+						telemetry['model_name'].append('SODNet')
+						telemetry['phase'].append('latency')
+						telemetry['epoch'].append(rep + 1)
+						telemetry['loss'].append(-1)
+						telemetry['performance'].append(-1)
+						telemetry['elapsed_time'].append(start.elapsed_time(end) * 1e6)
+
+				if warmup_finished:
+					break
 
 		pd.DataFrame(telemetry).to_csv(results_filepath, index=False)

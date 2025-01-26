@@ -8,10 +8,10 @@ import multiprocessing as mp
 import tensorflow as tf
 
 
-RUN_CLFS = True
 clfs = ['FullyConnectedNet', 'SimpleConvNet', 'ResNet-50', 'DenseNet-121', 'MobileNet-v2', 'ConvNeXt-Tiny']
-RUN_DCGAN = True
-RUN_SODNET = True
+RUN_CLFS = True
+RUN_DCGAN = False
+RUN_SODNET = False
 
 
 if __name__ == '__main__':
@@ -30,10 +30,11 @@ if __name__ == '__main__':
 	config = {
 		'batch_size': 96,
 		'batch_size_SOD': 8,
+		'latency_warmup_steps': 1000,
 		'test_batch_size': 128,
 		'gen_batch_size': 1000,
 		'test_batch_size_SOD': 16,
-		'epochs': 8,
+		'epochs': 12,
 		'lr': 1e-4,
 		'momentum': 0.0,
 		'inputs': tf.keras.layers.Input(shape=(32,32,3)),

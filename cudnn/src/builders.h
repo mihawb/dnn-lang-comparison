@@ -3,14 +3,15 @@
 
 #include "network.h"
 
-namespace cudl {
+namespace cudl
+{
+	void FullyConnectedNetBuilder(Network &model);
 
-void FullyConnectedNetBuilder(Network &model);
+	void SimpleConvNetBuilder(Network &model);
 
-void SimpleConvNetBuilder(Network &model);
+	void ExtendedConvNetBuilder(Network &model);
 
-void ModelFactory(Network &model, int m);
-
+	void ModelFactory(Network &model, int m);
 }
 
 #endif // _BUILDERS_H_

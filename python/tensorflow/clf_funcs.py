@@ -58,7 +58,7 @@ def train_single_model(model_name, config, telemetry, child_conn):
 	model, train_ds, test_ds = env_builder(model_name, config)
 	optimizer = tf.keras.optimizers.SGD(learning_rate=config['lr'], momentum=config['momentum'])
 	model.compile(optimizer=optimizer, loss=config['loss_func'], metrics=['accuracy'])
-	perfcounter = PerfCounterCallback(telemetry)
+	perfcounter = PerfCounterCallback(telemetry, [])
 
 
 	# training 
@@ -108,33 +108,32 @@ def train_single_model(model_name, config, telemetry, child_conn):
 	# epoch and elapsed_time handeled by PerfCounterCallback
 
 	# single sample latency
+	perfcounter.latency_ref.clear()
 	if isinstance(test_ds, tuple):
-		for rep in range(config['epochs']):
-			sample = np.expand_dims(test_ds[0][rep], axis=0)
-			start = time.perf_counter_ns()
-			_ = model(sample, training=False)
-			end = time.perf_counter_ns()
+		for rep in range(config['epochs'] + config['latency_warmup_steps']):
+			sample = np.expand_dims(test_ds[0][rep % config['batch_size']], axis=0)
+			_ = model.predict(sample, callbacks=[perfcounter])
 
-			telemetry['model_name'].append(model_name)
-			telemetry['phase'].append('latency')
-			telemetry['loss'].append(-1)
-			telemetry['performance'].append(-1)
-			telemetry['epoch'].append(rep + 1)
-			telemetry['elapsed_time'].append(end - start)
+			if rep >= config['latency_warmup_steps']:
+				telemetry['model_name'].append(model_name)
+				telemetry['phase'].append('latency')
+				telemetry['loss'].append(-1)
+				telemetry['performance'].append(-1)
+				telemetry['epoch'].append(rep + 1 - config['latency_warmup_steps'])
+		telemetry['elapsed_time'].extend(perfcounter.latency_ref[config['latency_warmup_steps']:])
 	else:
 		batch = next(iter(test_ds))[0]
-		for rep in range(config['epochs']):
-			sample = np.expand_dims(batch[rep], axis=0)
-			start = time.perf_counter_ns()
-			_ = model(sample, training=False)
-			end = time.perf_counter_ns()
+		for rep in range(config['epochs'] + config['latency_warmup_steps']):
+			sample = np.expand_dims(batch[rep % config['batch_size']], axis=0)
+			_ = model.predict(sample, callbacks=[perfcounter])
 
-			telemetry['model_name'].append(model_name)
-			telemetry['phase'].append('latency')
-			telemetry['loss'].append(-1)
-			telemetry['performance'].append(-1)
-			telemetry['epoch'].append(rep + 1)
-			telemetry['elapsed_time'].append(end - start)
+			if rep >= config['latency_warmup_steps']:
+				telemetry['model_name'].append(model_name)
+				telemetry['phase'].append('latency')
+				telemetry['loss'].append(-1)
+				telemetry['performance'].append(-1)
+				telemetry['epoch'].append(rep + 1 - config['latency_warmup_steps'])
+		telemetry['elapsed_time'].extend(perfcounter.latency_ref[config['latency_warmup_steps']:])
 
 	child_conn.send(telemetry)
 	pd.DataFrame(telemetry).to_csv(config['results_filename'], index=False)
@@ -196,9 +195,9 @@ def combine_model(inputs, predef_model, classifier, image_size=32):
 		weights=None
 	)
 
-	resize = tf.keras.layers.Resizing(image_size, image_size)(inputs)
+	# resize = tf.keras.layers.Resizing(image_size, image_size)(inputs)
 
-	feature_extractor = predef_model_materialised(resize)
+	feature_extractor = predef_model_materialised(inputs)
 	classification_output = classifier(feature_extractor)
 	combined = tf.keras.Model(inputs=inputs, outputs=classification_output)
 
@@ -206,9 +205,10 @@ def combine_model(inputs, predef_model, classifier, image_size=32):
 
 
 class PerfCounterCallback(tf.keras.callbacks.Callback):
-	def __init__(self, telemetry_ref):
+	def __init__(self, telemetry_ref: dict, latency_ref: list[int]):
 		super().__init__()
 		self.telemetry_ref = telemetry_ref
+		self.latency_ref = latency_ref
 		self.times = []
 		self.eps = []
 		self.training = False
@@ -237,6 +237,14 @@ class PerfCounterCallback(tf.keras.callbacks.Callback):
 		if self.training: return 
 		self.telemetry_ref['elapsed_time'].append(perf_counter_ns() - self.test_start)
 		self.telemetry_ref['epoch'].append(1)
+
+	def on_predict_begin(self, logs=None):
+		self.pred_start = perf_counter_ns()
+
+	
+	def on_predict_end(self, logs=None):
+		pred_end = perf_counter_ns()
+		self.latency_ref.append(pred := (pred_end - self.pred_start))
 
 
 class FullyConnectedNet(tf.keras.Model):
@@ -272,7 +280,7 @@ def SimpleConvNetBuilder(num_classes=10):
 		tf.keras.layers.Conv2D(32, kernel_size=5, padding="same", activation='relu'),
 		tf.keras.layers.MaxPooling2D(pool_size=(2, 2)),
 		tf.keras.layers.Flatten(),
-		tf.keras.layers.Dense(500, activation='relu'),
+		tf.keras.layers.Dense(512, activation='relu'),
 		tf.keras.layers.Dense(num_classes, activation='softmax'),
 	]
 	return tf.keras.Sequential(layers)
