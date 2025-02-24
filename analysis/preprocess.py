@@ -2,10 +2,21 @@ import pandas as pd
 import time
 from pathlib import Path
 from functools import reduce
+import matplotlib.pyplot as plt
 
 
 MODEL_ORDER = ["FullyConnectedNet", "SimpleConvNet", "ResNet-50", "DenseNet-121", "MobileNet-v2", "ConvNeXt-Tiny", "DCGAN", "YOLOv8m"]
 FRAMEWORK_ORDER = ["cuDNN", "LibTorch", "PyTorch", "TensorFlow", "Matlab", "PyTorch_eager", "PyTorch_compile"]
+
+
+def set_plt_font_sizes(smaller=10, small=11, medium=12, big=13, bigger=14) -> None:
+	plt.rc('figure', titlesize=bigger)	# fontsize of the figure title
+	plt.rc('axes', titlesize=big)		# fontsize of the axes title
+	plt.rc('axes', labelsize=medium)	# fontsize of the x and y labels
+	plt.rc('xtick', labelsize=small)	# fontsize of the tick labels
+	plt.rc('ytick', labelsize=small)	# fontsize of the tick labels
+	plt.rc('legend', fontsize=small)	# legend fontsize
+	plt.rc('font', size=smaller)		# controls default text sizes
 
 
 def make_key(order: list[str]) -> callable:
