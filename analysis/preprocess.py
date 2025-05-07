@@ -3,10 +3,16 @@ import time
 from pathlib import Path
 from functools import reduce
 import matplotlib.pyplot as plt
+import math
 
 
 MODEL_ORDER = ["FullyConnectedNet", "SimpleConvNet", "ResNet-50", "DenseNet-121", "MobileNet-v2", "ConvNeXt-Tiny", "DCGAN", "YOLOv8m"]
 FRAMEWORK_ORDER = ["cuDNN", "LibTorch", "PyTorch", "TensorFlow", "Matlab", "PyTorch_eager", "PyTorch_compile"]
+
+
+def approx(val: float) -> float:
+	scale = abs(min(1, math.floor(math.log10(val))))
+	return round(val, scale)
 
 
 def set_plt_font_sizes(smaller=10, small=11, medium=12, big=13, bigger=14) -> None:
